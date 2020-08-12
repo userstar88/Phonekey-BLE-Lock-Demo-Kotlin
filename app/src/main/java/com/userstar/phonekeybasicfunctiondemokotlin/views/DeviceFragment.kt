@@ -27,8 +27,8 @@ class DeviceFragment : Fragment() {
         check_lock_status_Button.setOnClickListener {
 
             //
-            PhonekeyBLE.getInstance().checkActivation {
-
+            PhonekeyBLE.getInstance().checkLockerStatus { battery, version, status ->
+                Timber.i("callback")
             }
         }
     }

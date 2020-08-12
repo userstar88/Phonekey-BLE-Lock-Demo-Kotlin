@@ -113,19 +113,19 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                 Timber.i("services discovered: $status")
                 bluetoothGatt = gatt
 
-                val gattService = bluetoothGatt!!.getService(UUID_LOST_SERVICE)
+                val gattService = bluetoothGatt!!.getService(UUID_SERVICE)
                 if (gattService == null) {
                     Timber.e("UUID_SERVICE service didn't find")
                     return
                 }
 
-                gattCharacteristicWrite = gattService.getCharacteristic(UUID_LOST_WRITE)
+                gattCharacteristicWrite = gattService.getCharacteristic(UUID_CHARACTERISTIC_WRITE)
                 if (gattCharacteristicWrite==null) {
                     Timber.e("Characteristic for writing didn't find")
                     return
                 }
 
-                gattCharacteristicNotify = gattService.getCharacteristic(UUID_LOST_ENABLE)
+                gattCharacteristicNotify = gattService.getCharacteristic(UUID_CHARACTERISTIC_NOTIFY)
                 if (gattCharacteristicNotify==null) {
                     Timber.e("Characteristic for notifying didn't find")
                     return
@@ -144,9 +144,9 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                 characteristic: BluetoothGattCharacteristic?
             ) {
                 super.onCharacteristicChanged(gatt, characteristic)
-                Timber.i("characteristic notified")
+//                Timber.i("characteristic notified")
                 if (characteristic!=null) {
-                    receiveCallback(characteristic)
+                    receiveListener(characteristic)
                 } else {
                     Timber.w("characteristic null")
                 }
@@ -154,10 +154,10 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         })
     }
 
-    override lateinit var receiveCallback: (BluetoothGattCharacteristic) -> Unit
-    override fun write(data: ByteArray) :Boolean {
+    override lateinit var receiveListener: (BluetoothGattCharacteristic) -> Unit
+    override fun write(data: ByteArray): AbstractPhonekeyBLEHelper {
         gattCharacteristicWrite!!.value = data
-        return bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
-
+        bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
+        return this
     }
 }

@@ -26,27 +26,26 @@ class PhonekeyBLE {
 //    }
 
     fun checkActivation(callback: (Boolean) -> Unit) {
-        bluetoothHelper.receiveCallback = { gattCharacteristic: BluetoothGattCharacteristic ->
-            val byteArray = gattCharacteristic.value as ByteArray
-            val data = byteArray.toHex()
-            val isActive = data.substring(4, 6) == "01"
-            callback(isActive)
-        }
-        Timber.i("write 0100")
-        Timber.i("%s", "0100".toCustomHexByteArray())
-
         bluetoothHelper.write("0100".toCustomHexByteArray())
+            .setOnReceiveListener { gattCharacteristic ->
+                val byteArray = gattCharacteristic.value as ByteArray
+                val data = byteArray.toHex()
+                val isActive = data.substring(4, 6) == "01"
+                callback(isActive)
+            }
     }
 
-//    fun checkLockerStatus(callback: (String, String, String) -> Unit) {
-//        bluetoothHelper.write("0399")
-//            .registerObserver { receivedString ->
-//                val battery = receivedString.substring(6, 8)
-//                val version = receivedString.substring(10, 12)
-//                val door = receivedString.substring(14, 16)
-//                callback(battery, version, door)
-//            }
-//    }
+    fun checkLockerStatus(callback: (String, String, String) -> Unit) {
+        bluetoothHelper.write("0399".toCustomHexByteArray())
+            .setOnReceiveListener { gattCharacteristic: BluetoothGattCharacteristic ->
+                val byteArray = gattCharacteristic.value as ByteArray
+                val data = byteArray.toHex()
+                val battery = data.substring(6, 8)
+                val version = data.substring(10, 12)
+                val door = data.substring(14, 16)
+                callback(battery, version, door)
+            }
+    }
 
     private fun String.toCustomHexByteArray() : ByteArray {
         // Calculate data length and insert in head of data
@@ -61,7 +60,6 @@ class PhonekeyBLE {
             stringBuilder.insert(0, '0')
         }
         val dataWithLength = stringBuilder.append(this).toString()
-        Timber.i("dataWithLength: %s", dataWithLength)
 
         val HEX_CHARS = "0123456789ABCDEF"
         val result = ByteArray(dataWithLength.length / 2)
