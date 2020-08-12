@@ -11,7 +11,7 @@ import android.widget.Toast
 import timber.log.Timber
 import java.util.*
 
-class BLEHelper {
+class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     companion object {
         @JvmStatic
@@ -22,6 +22,10 @@ class BLEHelper {
             }
             return instance as BLEHelper
         }
+
+        private val UUID_LOST_SERVICE = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
+        private val UUID_LOST_ENABLE = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
+        private val UUID_LOST_WRITE = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
 
         private val UUID_SERVICE: UUID = UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb")
         private val UUID_CHARACTERISTIC_WRITE: UUID = UUID.fromString("0000fff3-0000-1000-8000-00805f9b34fb")
@@ -109,19 +113,19 @@ class BLEHelper {
                 Timber.i("services discovered: $status")
                 bluetoothGatt = gatt
 
-                val gattService = bluetoothGatt!!.getService(UUID_SERVICE)
+                val gattService = bluetoothGatt!!.getService(UUID_LOST_SERVICE)
                 if (gattService == null) {
                     Timber.e("UUID_SERVICE service didn't find")
                     return
                 }
 
-                gattCharacteristicWrite = gattService.getCharacteristic(UUID_CHARACTERISTIC_WRITE)
+                gattCharacteristicWrite = gattService.getCharacteristic(UUID_LOST_WRITE)
                 if (gattCharacteristicWrite==null) {
                     Timber.e("Characteristic for writing didn't find")
                     return
                 }
 
-                gattCharacteristicNotify = gattService.getCharacteristic(UUID_CHARACTERISTIC_NOTIFY)
+                gattCharacteristicNotify = gattService.getCharacteristic(UUID_LOST_ENABLE)
                 if (gattCharacteristicNotify==null) {
                     Timber.e("Characteristic for notifying didn't find")
                     return
@@ -135,18 +139,6 @@ class BLEHelper {
                 connectedCallback()
             }
 
-//            override fun onCharacteristicWrite(
-//                gatt: BluetoothGatt?,
-//                characteristic: BluetoothGattCharacteristic?,
-//                status: Int
-//            ) {
-//                super.onCharacteristicWrite(gatt, characteristic, status)
-//                if (characteristic != null) {
-//                    Timber.i("characteristic uuid: %s", characteristic.uuid)
-//                    Timber.i("characteristic uuid: %s", String(characteristic.value))
-//                }
-//            }
-
             override fun onCharacteristicChanged(
                 gatt: BluetoothGatt?,
                 characteristic: BluetoothGattCharacteristic?
@@ -154,7 +146,7 @@ class BLEHelper {
                 super.onCharacteristicChanged(gatt, characteristic)
                 Timber.i("characteristic notified")
                 if (characteristic!=null) {
-                    read(characteristic)
+                    receiveCallback(characteristic)
                 } else {
                     Timber.w("characteristic null")
                 }
@@ -162,44 +154,10 @@ class BLEHelper {
         })
     }
 
-    fun write(data: String) {
-        // Calculate data length and insert in head of data
-        val length: Int = if (data.length % 2 != 0) {
-            data.length / 2 + 1
-        } else {
-            data.length / 2
-        }
-        val stringBuilder = StringBuilder()
-        stringBuilder.append(length)
-        if (stringBuilder.length < 2) {
-            stringBuilder.insert(0, '0')
-        }
+    override lateinit var receiveCallback: (BluetoothGattCharacteristic) -> Unit
+    override fun write(data: ByteArray) :Boolean {
+        gattCharacteristicWrite!!.value = data
+        return bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
 
-        val finalData = stringBuilder.append(data).toString()
-        gattCharacteristicWrite!!.value = finalData.toHexByteArray()
-        val isSuccess = if (bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)) "Successfully" else "Failed to"
-        Timber.i("$isSuccess write %s", finalData)
-    }
-
-    private fun String.toHexByteArray() : ByteArray {
-        val HEX_CHARS = "0123456789ABCDEF"
-        val result = ByteArray(length / 2)
-        for (i in 0 until length step 2) {
-            val firstIndex = HEX_CHARS.indexOf(this[i]);
-            val secondIndex = HEX_CHARS.indexOf(this[i + 1]);
-            val octet = firstIndex.shl(4).or(secondIndex)
-            result[i.shr(1)] = octet.toByte()
-        }
-        return result
-    }
-
-    private fun read(characteristic: BluetoothGattCharacteristic) {
-        val byteArrayData = characteristic.value as ByteArray
-        Timber.i("%s", byteArrayData.toHex())
-    }
-
-
-    private fun ByteArray.toHex(): String {
-        return joinToString("") { "%02x".format(it) }
     }
 }

@@ -18,6 +18,6 @@ open class ThreadIncludedDebugTree : Timber.DebugTree() {
     }
 
     override fun createStackElementTag(element: StackTraceElement): String? {
-        return super.createStackElementTag(element) + "(Line " + element.lineNumber + "): "
+        return super.createStackElementTag(element) + "(" + element.lineNumber + ") "
     }
 }

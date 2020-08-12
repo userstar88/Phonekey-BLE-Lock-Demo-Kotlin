@@ -1,5 +1,6 @@
 package com.userstar.phonekeybasicfunctiondemokotlin.views
 
+import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.os.Bundle
 import androidx.fragment.app.Fragment
@@ -9,25 +10,16 @@ import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.viewModels
-import androidx.lifecycle.observe
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.userstar.phonekeybasicfunctiondemokotlin.viewmodels.DeviceListViewModel
 import com.userstar.phonekeybasicfunctiondemokotlin.R
-import com.userstar.phonekeybasicfunctiondemokotlin.utilities.Injector
-import kotlinx.android.synthetic.main.device_list_fragment.*
-import java.util.*
+import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
+import timber.log.Timber
 import kotlin.collections.ArrayList
 
 class DeviceListFragment : Fragment() {
-
-    companion object {
-        @JvmStatic
-        fun newInstance() =
-            DeviceListFragment()
-    }
 
     private lateinit var deviceListRecyclerViewAdapter: DeviceListRecyclerViewAdapter
     private lateinit var deviceListRecyclerView: RecyclerView
@@ -49,39 +41,38 @@ class DeviceListFragment : Fragment() {
         return view
     }
 
-
-    private val viewModel: DeviceListViewModel by viewModels {
-        Injector.provideDeviceListViewModelFactory()
-    }
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         deviceListRecyclerViewAdapter = DeviceListRecyclerViewAdapter()
         deviceListRecyclerView.adapter = deviceListRecyclerViewAdapter
 
-        var flag = true
-        viewModel.bleDevice.observe(viewLifecycleOwner) { result ->
-            if (flag) {
-                flag = false
-                Timer().schedule(object : TimerTask() {
-                    override fun run() {
-                        // Check device have already showed?
-                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                deviceListRecyclerViewAdapter.updateRssi(position, result)
-                                flag = true
-                                return
-                            }
-                        }
-                        // Add new devices
-                        deviceListRecyclerViewAdapter.updateList(result)
-                        flag = true
-                    }
-                }, 500)
+        BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+            override fun onScanFailed(errorCode: Int) {
+                super.onScanFailed(errorCode)
+                Timber.i("failed: $errorCode")
             }
-        }
 
-        viewModel.getDevice(requireContext())
+            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                super.onScanResult(callbackType, result)
+                if (result != null && result.device.name!=null) {
+                    Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
+                    for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
+                        if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                            deviceListRecyclerViewAdapter.updateRssi(position, result)
+                            return
+                        }
+                    }
+                    // Add new devices
+                    deviceListRecyclerViewAdapter.updateList(result)
+                }
+            }
+
+            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                super.onBatchScanResults(results)
+                Timber.i(results.toString())
+            }
+        })
     }
 
     override fun onPause() {
@@ -118,6 +109,7 @@ class DeviceListFragment : Fragment() {
             holder.deviceMacTextView.text = scanResultList[position].device.address
             holder.deviceRSSITextView.text = scanResultList[position].rssi.toString()
             holder.itemView.setOnClickListener {
+
                 val callbackConnected = {
                     val destination = DeviceListFragmentDirections
                         .actionDeviceListFragmentToDeviceFragment(scanResultList[position])
@@ -131,7 +123,7 @@ class DeviceListFragment : Fragment() {
                     }
                 }
 
-                viewModel.connectBLE(
+                BLEHelper.getInstance().connectBLE(
                     requireContext(),
                     scanResultList[position].device,
                     callbackConnected,
