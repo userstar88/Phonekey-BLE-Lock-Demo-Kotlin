@@ -18,6 +18,8 @@ import com.userstar.phonekeybasicfunctiondemokotlin.viewmodels.DeviceListViewMod
 import com.userstar.phonekeybasicfunctiondemokotlin.R
 import com.userstar.phonekeybasicfunctiondemokotlin.utilities.Injector
 import kotlinx.android.synthetic.main.device_list_fragment.*
+import java.util.*
+import kotlin.collections.ArrayList
 
 class DeviceListFragment : Fragment() {
 
@@ -27,8 +29,8 @@ class DeviceListFragment : Fragment() {
             DeviceListFragment()
     }
 
-    lateinit var deviceListRecyclerViewAdapter: DeviceListRecyclerViewAdapter
-    lateinit var deviceListRecyclerView: RecyclerView
+    private lateinit var deviceListRecyclerViewAdapter: DeviceListRecyclerViewAdapter
+    private lateinit var deviceListRecyclerView: RecyclerView
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -47,32 +49,45 @@ class DeviceListFragment : Fragment() {
         return view
     }
 
+
     private val viewModel: DeviceListViewModel by viewModels {
         Injector.provideDeviceListViewModelFactory()
     }
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         deviceListRecyclerViewAdapter = DeviceListRecyclerViewAdapter()
         deviceListRecyclerView.adapter = deviceListRecyclerViewAdapter
 
-        start_scan_button.setOnClickListener {
-            viewModel.startScan(requireContext())
-        }
-
+        var flag = true
         viewModel.bleDevice.observe(viewLifecycleOwner) { result ->
-            // Check device have already showed?
-            for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                    deviceListRecyclerViewAdapter.updateRssi(position, result)
-                    return@observe
-                }
+            if (flag) {
+                flag = false
+                Timer().schedule(object : TimerTask() {
+                    override fun run() {
+                        // Check device have already showed?
+                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
+                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                deviceListRecyclerViewAdapter.updateRssi(position, result)
+                                flag = true
+                                return
+                            }
+                        }
+                        // Add new devices
+                        deviceListRecyclerViewAdapter.updateList(result)
+                        flag = true
+                    }
+                }, 500)
             }
-
-            // Add new devices
-            deviceListRecyclerViewAdapter.updateList(result)
         }
+
+        viewModel.getDevice(requireContext())
+    }
+
+    override fun onPause() {
+        super.onPause()
+        deviceListRecyclerViewAdapter.scanResultList.clear()
+        deviceListRecyclerViewAdapter.notifyDataSetChanged()
     }
 
     inner class DeviceListRecyclerViewAdapter : RecyclerView.Adapter<DeviceListRecyclerViewAdapter.ViewHolder>() {
@@ -82,13 +97,17 @@ class DeviceListFragment : Fragment() {
 
         var scanResultList = ArrayList<ScanResult>()
         fun updateList(result: ScanResult) {
-            scanResultList.add(result)
-            notifyDataSetChanged()
+            requireActivity().runOnUiThread {
+                scanResultList.add(result)
+                notifyDataSetChanged()
+            }
         }
 
         fun updateRssi(position: Int, result: ScanResult) {
-            scanResultList[position] = result
-            notifyDataSetChanged()
+            requireActivity().runOnUiThread {
+                scanResultList[position] = result
+                notifyDataSetChanged()
+            }
         }
 
         override fun getItemCount() = scanResultList.size
@@ -106,6 +125,7 @@ class DeviceListFragment : Fragment() {
                 }
 
                 val callbackDisconnected = {
+                    findNavController().popBackStack()
                     requireActivity().runOnUiThread {
                         Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
                     }

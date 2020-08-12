@@ -17,7 +17,7 @@
 
             <argument
                 android:name="scanResult"
-                app:argType="android.bluetooth.le.ScanResult"/>
+                app:argType="android.bluetooth.le.ScanResult" />
         </action>
     </fragment>
     <fragment

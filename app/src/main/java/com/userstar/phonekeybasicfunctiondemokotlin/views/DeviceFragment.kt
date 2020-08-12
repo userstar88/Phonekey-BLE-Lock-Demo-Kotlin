@@ -1,13 +1,17 @@
 package com.userstar.phonekeybasicfunctiondemokotlin.views
 
-import androidx.lifecycle.ViewModelProviders
+import android.bluetooth.le.ScanResult
 import android.os.Bundle
-import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import com.userstar.phonekeybasicfunctiondemokotlin.viewmodels.DeviceViewModel
+import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import com.userstar.phonekeybasicfunctiondemokotlin.R
+import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
+import com.userstar.phonekeybasicfunctiondemokotlin.viewmodels.DeviceViewModel
+import kotlinx.android.synthetic.main.device_fragment.*
+import timber.log.Timber
 
 class DeviceFragment : Fragment() {
 
@@ -16,8 +20,6 @@ class DeviceFragment : Fragment() {
         fun newInstance() = DeviceFragment()
     }
 
-    private lateinit var viewModel: DeviceViewModel
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -25,10 +27,13 @@ class DeviceFragment : Fragment() {
         return inflater.inflate(R.layout.device_fragment, container, false)
     }
 
-    override fun onActivityCreated(savedInstanceState: Bundle?) {
-        super.onActivityCreated(savedInstanceState)
-        viewModel = ViewModelProviders.of(this).get(DeviceViewModel::class.java)
-        // TODO: Use the ViewModel
-    }
+    private val viewModel: DeviceViewModel by viewModels()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
 
+        val scanResult = requireArguments()["scanResult"] as ScanResult
+        check_lock_status_Button.setOnClickListener {
+            BLEHelper.getInstance().write("0399")
+        }
+    }
 }

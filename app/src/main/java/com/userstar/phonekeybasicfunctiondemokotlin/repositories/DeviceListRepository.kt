@@ -4,14 +4,14 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.content.Context
-import com.userstar.phonekeybasicfunctiondemokotlin.services.BLE
+import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
 import timber.log.Timber
 
 class DeviceListRepository {
 
-    fun scanBLEDevice(context: Context, callback: (result: ScanResult)->Unit) {
+    fun getDevice(context: Context, callback: (result: ScanResult)->Unit) {
 
-        BLE.startScan(context, object : ScanCallback() {
+        BLEHelper.getInstance().startScan(context, arrayOf("BKBFMLNAFBI") ,object : ScanCallback() {
             override fun onScanFailed(errorCode: Int) {
                 super.onScanFailed(errorCode)
                 Timber.i("failed: $errorCode")
@@ -39,7 +39,7 @@ class DeviceListRepository {
         callbackConnected: () -> Unit,
         callbackDisConnected: () -> Unit
     ) {
-        BLE.connectBLE(context, device, callbackConnected, callbackDisConnected)
+        BLEHelper.getInstance().connectBLE(context, device, callbackConnected, callbackDisConnected)
     }
 
 }

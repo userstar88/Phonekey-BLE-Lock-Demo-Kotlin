@@ -2,6 +2,7 @@ package com.userstar.phonekeybasicfunctiondemokotlin.viewmodels
 
 
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
 import android.bluetooth.le.ScanResult
 import android.content.Context
 import androidx.lifecycle.MutableLiveData
@@ -14,8 +15,8 @@ class DeviceListViewModel : ViewModel() {
     private val repository = DeviceListRepository()
 
     val bleDevice = MutableLiveData<ScanResult>()
-    fun startScan(context: Context) {
-        repository.scanBLEDevice(context) { scanResult ->
+    fun getDevice(context: Context) {
+        repository.getDevice(context) { scanResult ->
             bleDevice.postValue(scanResult)
         }
     }
