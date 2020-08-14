@@ -5,8 +5,9 @@ import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
-import android.bluetooth.le.ScanSettings.SCAN_MODE_LOW_LATENCY
+import android.bluetooth.le.ScanSettings.*
 import android.content.Context
+import android.os.Build
 import android.widget.Toast
 import timber.log.Timber
 import java.util.*
@@ -23,21 +24,9 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             return instance as BLEHelper
         }
 
-        private val UUID_LOST_SERVICE = UUID.fromString("6E400001-B5A3-F393-E0A9-E50E24DCCA9E")
-        private val UUID_LOST_ENABLE = UUID.fromString("6E400003-B5A3-F393-E0A9-E50E24DCCA9E")
-        private val UUID_LOST_WRITE = UUID.fromString("6E400002-B5A3-F393-E0A9-E50E24DCCA9E")
-
         private val UUID_SERVICE: UUID = UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb")
         private val UUID_CHARACTERISTIC_WRITE: UUID = UUID.fromString("0000fff3-0000-1000-8000-00805f9b34fb")
         private val UUID_CHARACTERISTIC_NOTIFY: UUID = UUID.fromString("0000fff4-0000-1000-8000-00805f9b34fb")
-    }
-
-    private var bluetoothAdapter: BluetoothAdapter? = null
-    private fun getAdapter(context: Context) : BluetoothAdapter? {
-        if (bluetoothAdapter==null) {
-            bluetoothAdapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-        }
-        return bluetoothAdapter
     }
 
     private lateinit var bluetoothLeScanner: BluetoothLeScanner
@@ -48,7 +37,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         nameFilter: Array<String>?,
         callback: ScanCallback
     ) {
-        val adapter = getAdapter(context)
+        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         if (adapter==null || !adapter.isEnabled) {
             Toast.makeText(context, "DEVICE NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
             return
@@ -59,9 +48,9 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                 Timber.i("start scan")
                 bluetoothLeScanner.startScan(scanCallback)
             } else {
-                val scanFilterArray = List<ScanFilter>(nameFilter.size) {
+                val scanFilterArray = List<ScanFilter>(nameFilter.size) { index ->
                     ScanFilter.Builder().apply {
-                        setDeviceName(nameFilter[it])
+                        setDeviceName(nameFilter[index])
                     }.build()
                 }
                 val setting = ScanSettings.Builder().apply {
@@ -95,7 +84,6 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             ) {
                 when (newState) {
                     BluetoothProfile.STATE_CONNECTED -> {
-                        stopScan()
                         Timber.i("Connected to GATT server.")
                         Timber.i("Attempting to start service discovery: ${bluetoothGatt?.discoverServices()}")
                     }

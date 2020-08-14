@@ -2,7 +2,10 @@ package com.userstar.phonekeybasicfunctiondemokotlin.views
 
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
@@ -16,7 +19,11 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeybasicfunctiondemokotlin.R
 import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
+import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Semaphore
 import timber.log.Timber
+import java.util.*
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.collections.ArrayList
 
 class DeviceListFragment : Fragment() {
@@ -38,14 +45,18 @@ class DeviceListFragment : Fragment() {
             )
         )
 
+        deviceListRecyclerViewAdapter = DeviceListRecyclerViewAdapter()
+        deviceListRecyclerView.adapter = deviceListRecyclerViewAdapter
+
         return view
     }
+
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        deviceListRecyclerViewAdapter = DeviceListRecyclerViewAdapter()
-        deviceListRecyclerView.adapter = deviceListRecyclerViewAdapter
+        deviceListRecyclerViewAdapter.scanResultList.clear()
+        deviceListRecyclerViewAdapter.notifyDataSetChanged()
 
         BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
             override fun onScanFailed(errorCode: Int) {
@@ -57,14 +68,22 @@ class DeviceListFragment : Fragment() {
                 super.onScanResult(callbackType, result)
                 if (result != null && result.device.name!=null) {
                     Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
-                    for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                        if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                            deviceListRecyclerViewAdapter.updateRssi(position, result)
-                            return
+                    GlobalScope.launch(Dispatchers.IO) {
+                        semaphore.acquire()
+                        var isNewDevice = true
+                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
+                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                deviceListRecyclerViewAdapter.updateRssi(position, result)
+                                isNewDevice = false
+                                break
+                            }
                         }
+                        if (isNewDevice) {
+                            // Add new devices
+                            deviceListRecyclerViewAdapter.updateList(result)
+                        }
+                        semaphore.release()
                     }
-                    // Add new devices
-                    deviceListRecyclerViewAdapter.updateList(result)
                 }
             }
 
@@ -73,12 +92,8 @@ class DeviceListFragment : Fragment() {
                 Timber.i(results.toString())
             }
         })
-    }
 
-    override fun onPause() {
-        super.onPause()
-        deviceListRecyclerViewAdapter.scanResultList.clear()
-        deviceListRecyclerViewAdapter.notifyDataSetChanged()
+        autoConnect("BKBFMLNAFBI")
     }
 
     inner class DeviceListRecyclerViewAdapter : RecyclerView.Adapter<DeviceListRecyclerViewAdapter.ViewHolder>() {
@@ -86,8 +101,9 @@ class DeviceListFragment : Fragment() {
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
             ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.device_list_recycler_view_holder, parent, false))
 
-        var scanResultList = ArrayList<ScanResult>()
+        var scanResultList = CopyOnWriteArrayList<ScanResult>()
         fun updateList(result: ScanResult) {
+            Timber.i("add device ${result.device.name}")
             requireActivity().runOnUiThread {
                 scanResultList.add(result)
                 notifyDataSetChanged()
@@ -95,6 +111,7 @@ class DeviceListFragment : Fragment() {
         }
 
         fun updateRssi(position: Int, result: ScanResult) {
+            Timber.i("update ${result.device.name} rssi: ${result.rssi} ")
             requireActivity().runOnUiThread {
                 scanResultList[position] = result
                 notifyDataSetChanged()
@@ -104,30 +121,11 @@ class DeviceListFragment : Fragment() {
         override fun getItemCount() = scanResultList.size
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-    //            Timber.d(deviceList[position].toString())
             holder.deviceNameTextView.text = scanResultList[position].device.name
             holder.deviceMacTextView.text = scanResultList[position].device.address
             holder.deviceRSSITextView.text = scanResultList[position].rssi.toString()
             holder.itemView.setOnClickListener {
-
-                val callbackConnected = {
-                    val destination = DeviceListFragmentDirections
-                        .actionDeviceListFragmentToDeviceFragment(scanResultList[position])
-                    findNavController().navigate(destination)
-                }
-
-                val callbackDisconnected = {
-                    findNavController().popBackStack()
-                    requireActivity().runOnUiThread {
-                        Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
-                    }
-                }
-
-                BLEHelper.getInstance().connectBLE(
-                    requireContext(),
-                    scanResultList[position].device,
-                    callbackConnected,
-                    callbackDisconnected)
+                connect(scanResultList[position])
             }
         }
 
@@ -135,6 +133,48 @@ class DeviceListFragment : Fragment() {
             val deviceNameTextView: TextView = view.findViewById(R.id.device_name_textView)
             val deviceMacTextView: TextView = view.findViewById(R.id.device_mac_textView)
             val deviceRSSITextView: TextView = view.findViewById(R.id.device_rssi_textView)
+        }
+    }
+
+    private fun connect(result: ScanResult) {
+        Timber.i("Connect %s", result.device.name)
+
+        val callbackConnected = {
+            val destination = DeviceListFragmentDirections
+                .actionDeviceListFragmentToDeviceFragment(result)
+            findNavController().navigate(destination)
+        }
+
+        val callbackDisconnected = {
+            findNavController().popBackStack()
+            requireActivity().runOnUiThread {
+                Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
+            }
+        }
+
+        BLEHelper.getInstance().connectBLE(
+            requireContext(),
+            result.device,
+            callbackConnected,
+            callbackDisconnected)
+    }
+
+    private val semaphore = Semaphore(1)
+    private fun autoConnect(deviceName: String) {
+        GlobalScope.launch(Dispatchers.IO) {
+            var isNotConnected = true
+            while (isNotConnected) {
+                semaphore.acquire()
+                for (result in deviceListRecyclerViewAdapter.scanResultList) {
+                    if (result.device.name == deviceName) {
+                        BLEHelper.getInstance().stopScan()
+                        connect(result)
+                        isNotConnected = false
+                        break
+                    }
+                }
+                semaphore.release()
+            }
         }
     }
 }
