@@ -134,7 +134,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                 super.onCharacteristicChanged(gatt, characteristic)
 //                Timber.i("characteristic notified")
                 if (characteristic!=null) {
-                    receiveListener(characteristic)
+                    callback(characteristic)
                 } else {
                     Timber.w("characteristic null")
                 }
@@ -142,10 +142,14 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         })
     }
 
-    override lateinit var receiveListener: (BluetoothGattCharacteristic) -> Unit
-    override fun write(data: ByteArray): AbstractPhonekeyBLEHelper {
+    fun disConnectBLE() {
+        bluetoothGatt!!.disconnect()
+    }
+
+    override lateinit var callback: (BluetoothGattCharacteristic) -> Unit
+    override fun write(data: ByteArray, callback: (BluetoothGattCharacteristic) -> Unit) {
+        this.callback = callback
         gattCharacteristicWrite!!.value = data
         bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
-        return this
     }
 }

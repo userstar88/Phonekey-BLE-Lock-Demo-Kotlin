@@ -1,6 +1,8 @@
 package com.userstar.phonekeybasicfunctiondemokotlin.services.userstar;
 
-public class Triv {
+public class triv {
+    public triv() {
+    }
 
     public static String get_triv(String USID, String Key, String ls_counter, String T1) {
         try {
@@ -280,3 +282,4 @@ public class Triv {
         return ls_2;
     }
 }
+

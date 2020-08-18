@@ -70,17 +70,19 @@ class DeviceListFragment : Fragment() {
                     Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
                     GlobalScope.launch(Dispatchers.IO) {
                         semaphore.acquire()
-                        var isNewDevice = true
-                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                deviceListRecyclerViewAdapter.updateRssi(position, result)
-                                isNewDevice = false
-                                break
+                        if (isNotConnected) {
+                            var isNewDevice = true
+                            for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
+                                if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                    deviceListRecyclerViewAdapter.updateRssi(position, result)
+                                    isNewDevice = false
+                                    break
+                                }
                             }
-                        }
-                        if (isNewDevice) {
-                            // Add new devices
-                            deviceListRecyclerViewAdapter.updateList(result)
+                            if (isNewDevice) {
+                                // Add new devices
+                                deviceListRecyclerViewAdapter.updateList(result)
+                            }
                         }
                         semaphore.release()
                     }
@@ -93,6 +95,7 @@ class DeviceListFragment : Fragment() {
             }
         })
 
+        isNotConnected = true
         autoConnect("BKBFMLNAFBI")
     }
 
@@ -140,15 +143,19 @@ class DeviceListFragment : Fragment() {
         Timber.i("Connect %s", result.device.name)
 
         val callbackConnected = {
-            val destination = DeviceListFragmentDirections
-                .actionDeviceListFragmentToDeviceFragment(result)
-            findNavController().navigate(destination)
+            requireActivity().runOnUiThread {
+                val destination = DeviceListFragmentDirections
+                    .actionDeviceListFragmentToDeviceFragment(result)
+                findNavController().navigate(destination)
+            }
         }
 
         val callbackDisconnected = {
-            findNavController().popBackStack()
             requireActivity().runOnUiThread {
-                Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
+                findNavController().popBackStack()
+                requireActivity().runOnUiThread {
+                    Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
+                }
             }
         }
 
@@ -160,9 +167,9 @@ class DeviceListFragment : Fragment() {
     }
 
     private val semaphore = Semaphore(1)
+    private var isNotConnected = true
     private fun autoConnect(deviceName: String) {
         GlobalScope.launch(Dispatchers.IO) {
-            var isNotConnected = true
             while (isNotConnected) {
                 semaphore.acquire()
                 for (result in deviceListRecyclerViewAdapter.scanResultList) {

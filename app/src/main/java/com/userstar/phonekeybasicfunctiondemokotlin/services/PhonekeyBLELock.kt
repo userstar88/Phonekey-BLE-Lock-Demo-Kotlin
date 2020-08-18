@@ -1,15 +1,31 @@
 package com.userstar.phonekeybasicfunctiondemokotlin.services
 
 import android.annotation.SuppressLint
+import android.nfc.tech.NfcV
 import android.util.Log
-import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.Triv
-import java.text.ParseException
-import java.text.SimpleDateFormat
-import java.util.*
-import kotlin.math.abs
+import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.Userstar.*
+import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.triv
+import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.ustag
 
 @SuppressLint("LogNotTimber", "SimpleDateFormat")
 class PhonekeyBLELock {
+
+    val TAG = "PhonekeyBLELock"
+
+    enum class MasterPasswordStatus {
+        PASSWORD_INCORRECT,
+        PASSWORD_CORRECT,
+        PASSWORD_INCORRECT_3_TIMES,
+        UNKNOWN,
+        SUCCESS
+    }
+
+    enum class ActivationCodeStatus {
+        CODE_INCORRECT,
+        CODE_INCORRECT_3_TIMES,
+        SUCCESS,
+        LENGTH_ERROR
+    }
 
     companion object {
         private var instance: PhonekeyBLELock? = null
@@ -33,12 +49,11 @@ class PhonekeyBLELock {
         return this
     }
 
-    fun checkActivation(callback: (Boolean) -> Unit) {
+    fun isActive(callback: (Boolean) -> Unit) {
         val sendData = "0100"
-        checkAndLog(sendData)
-        bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-            .setOnReceiveListener { gattCharacteristic ->
-                val receiveData = (gattCharacteristic.value as ByteArray).toHex()
+        checkBLEAndLog(sendData)
+        bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) { gattCharacteristic ->
+                val receiveData = (gattCharacteristic.value as ByteArray).toHex().toUpperCase()
                 logReceive(receiveData)
 
                 val isActive = receiveData.substring(4, 6) == "01"
@@ -46,11 +61,10 @@ class PhonekeyBLELock {
             }
     }
 
-    fun checkLockerStatus(callback: (String, String, String) -> Unit) {
+    fun getStatus(callback: (String, String, String) -> Unit) {
         val sendData = "0399"
-        checkAndLog(sendData)
-        bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-            .setOnReceiveListener { gattCharacteristic ->
+        checkBLEAndLog(sendData)
+        bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) { gattCharacteristic ->
                 val receiveData = (gattCharacteristic.value as ByteArray).toHex()
                 logReceive(receiveData)
 
@@ -61,56 +75,125 @@ class PhonekeyBLELock {
             }
     }
 
-    fun getT1(callback: (String) -> Unit) {
-        val sendData = "0501"
-        checkAndLog(sendData)
-        bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-            .setOnReceiveListener { gattCharacteristic ->
-                val receiveData = (gattCharacteristic.value as ByteArray).toHex()
+    fun activate(code: String, masterPassword: String, deviceName: String, callback: (ActivationCodeStatus, Int, Int) -> Unit) {
+        if (code.length != 36) {
+            Log.e(TAG, "QR Code's length need to be 36")
+            callback(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+        } else {
+            var sendData = "0501"
+            var receiveData: String
+            checkBLEAndLog(sendData)
+            bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                receiveData = (it.value as ByteArray).toHex().toUpperCase()
                 logReceive(receiveData)
-
                 val T1 = receiveData.substring(4)
-                callback(T1)
+
+                val uid = code.substring(0, 16)
+                val ac3 = code.substring(16, 36)
+                val counter = "0000000002"
+
+                val nowTime = get_time_8(get_nowtime())
+                sendData = "0507$uid$nowTime"
+                checkBLEAndLog(sendData)
+                bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                    receiveData = (it.value as ByteArray).toHex().toUpperCase()
+                    logReceive(receiveData)
+
+                    sendData = "0503$ac3${counter}"
+                    checkBLEAndLog(sendData)
+                    bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                        receiveData = (it.value as ByteArray).toHex().toUpperCase()
+                        logReceive(receiveData)
+
+                        when (receiveData.substring(4, 5)) {
+                            "1" -> callback(ActivationCodeStatus.CODE_INCORRECT, receiveData.substring(5, 6).toInt(), -1)
+                            "3" -> callback(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receiveData.substring(5, 6).toInt())
+                            "7" -> callback(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+                            else -> {
+                                val encryptedKey = encryptMasterPassword(deviceName, T1, masterPassword)
+                                sendData = "0505${encryptedKey[0]}${encryptedKey[1]}"
+                                checkBLEAndLog(sendData)
+                                bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                                    receiveData = (it.value as ByteArray).toHex().toUpperCase()
+                                    logReceive(receiveData)
+
+                                    callback(ActivationCodeStatus.SUCCESS, -1, -1)
+                                }
+                            }
+                        }
+                    }
+                }
             }
+        }
     }
 
-    fun sendCardID(no: String, callback: () -> Unit) {
-        val sendData = "0507$no${getTime8(getNowTime())}"
-        checkAndLog(sendData)
-        bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-            .setOnReceiveListener { gattCharacteristic ->
-                val receiveData = (gattCharacteristic.value as ByteArray).toHex()
+    fun activity(nfcV: NfcV, deviceName: String, masterPassword: String, callback: (ActivationCodeStatus, Int, Int) -> Unit) {
+        var sendData = "0501"
+        var receiveData: String
+        checkBLEAndLog(sendData)
+        bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+            receiveData = (it.value as ByteArray).toHex().toUpperCase()
+            logReceive(receiveData)
+            val T1 = receiveData.substring(4)
+
+            val vData = ustag(nfcV).getVdata(T1)
+            val uid = vData[0]
+            val ac3 = vData[1]
+            val counter = vData[2] + "01"
+
+            val nowTime = get_time_8(get_nowtime())
+            sendData = "0507$uid$nowTime"
+            checkBLEAndLog(sendData)
+            bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                receiveData = (it.value as ByteArray).toHex().toUpperCase()
                 logReceive(receiveData)
 
-                callback()
+                sendData = "0503$ac3$counter"
+                checkBLEAndLog(sendData)
+                bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                    receiveData = (it.value as ByteArray).toHex().toUpperCase()
+                    logReceive(receiveData)
+
+                    when (receiveData.substring(4, 5)) {
+                        "1" -> callback(ActivationCodeStatus.CODE_INCORRECT, receiveData.substring(5, 6).toInt(), -1)
+                        "3" -> callback(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receiveData.substring(5, 6).toInt())
+                        "7" -> callback(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+                        else -> {
+                            val encryptedKey = encryptMasterPassword(deviceName, T1, masterPassword)
+                            sendData = "0505${encryptedKey[0]}${encryptedKey[1]}"
+                            checkBLEAndLog(sendData)
+                            bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                                receiveData = (it.value as ByteArray).toHex().toUpperCase()
+                                logReceive(receiveData)
+
+                                callback(ActivationCodeStatus.SUCCESS, -1, -1)
+                            }
+                        }
+                    }
+                }
             }
+        }
     }
 
-    fun active(masterPassword: String, callback: () -> Unit) {
-
-    }
-
-    // FIXME
-    fun restore(masterPassword: String, callback: (RestoreInstructionStatus, Int, Int) -> Unit) {
+    fun deactivate(masterPassword: String, callback: (MasterPasswordStatus, Int, Int) -> Unit) {
         var sendData = "0601"
         var receiveData: String
-        checkAndLog(sendData)
-        bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-            .setOnReceiveListener {
-                receiveData = (it.value as ByteArray).toHex()
+        checkBLEAndLog(sendData)
+        bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                receiveData = (it.value as ByteArray).toHex().toUpperCase()
                 logReceive(receiveData)
                 val T1 = receiveData.substring(4)
-                val trimmedMasterPassword = Triv.get_triv(
+                val trimmedMasterPassword = triv.get_triv(
                     T1,
                     masterPassword.substring(0, 12),
                     masterPassword.substring(12, 16) + T1.substring(0, 4),
                     "00000000000000000000"
                 )
+
                 sendData = "0603$trimmedMasterPassword"
-                checkAndLog(sendData)
-                bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-                    .setOnReceiveListener {
-                        receiveData = (it.value as ByteArray).toHex()
+                checkBLEAndLog(sendData)
+                bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
+                        receiveData = (it.value as ByteArray).toHex().toUpperCase()
                         logReceive(receiveData)
 
                         var times: Int = -1
@@ -118,36 +201,36 @@ class PhonekeyBLELock {
                         val status =  when (receiveData.substring(4, 5)) {
                             "0" -> {
                                 times = receiveData.substring(5).toInt()
-                                RestoreInstructionStatus.PASSWORD_INCORRECT
+                                MasterPasswordStatus.PASSWORD_INCORRECT
                             }
                             "1" -> {
                                 if (receiveData.substring(5) == "0") {
-                                    RestoreInstructionStatus.PASSWORD_CORRECT
+                                    MasterPasswordStatus.PASSWORD_CORRECT
                                 } else {
-                                    RestoreInstructionStatus.PASSWORD_INCORRECT
+                                    MasterPasswordStatus.PASSWORD_INCORRECT
                                 }
                             }
                             "2" -> {
                                 needToWait = receiveData.substring(5).toInt()
-                                RestoreInstructionStatus.PASSWORD_INCORRECT_3_TIMES
+                                MasterPasswordStatus.PASSWORD_INCORRECT_3_TIMES
                             }
-                            else -> RestoreInstructionStatus.UNKNOWN
+                            else -> MasterPasswordStatus.UNKNOWN
                         }
 
-                        if (status == RestoreInstructionStatus.PASSWORD_CORRECT) {
+                        if (status != MasterPasswordStatus.PASSWORD_CORRECT) {
                             callback(status, times, needToWait)
                         } else {
                             sendData = "99AC"
-                            bluetoothHelper!!.write(sendData.toCustomHexByteArray())
-                                .setOnReceiveListener {
+                            checkBLEAndLog(sendData)
+                            bluetoothHelper!!.write(toHexByteArrayWithLength(sendData)) {
                                     receiveData = (it.value as ByteArray).toHex()
                                     logReceive(receiveData)
 
                                     callback(
                                         if (receiveData.substring(4) == "01") {
-                                            RestoreInstructionStatus.SUCCESS
+                                            MasterPasswordStatus.SUCCESS
                                         } else {
-                                            RestoreInstructionStatus.UNKNOWN
+                                            MasterPasswordStatus.UNKNOWN
                                         }
                                     , times
                                     , needToWait)
@@ -157,83 +240,20 @@ class PhonekeyBLELock {
             }
     }
 
-    enum class RestoreInstructionStatus {
-        PASSWORD_INCORRECT, PASSWORD_CORRECT, PASSWORD_INCORRECT_3_TIMES, UNKNOWN, SUCCESS
-    }
-
-    private fun String.toCustomHexByteArray() : ByteArray {
-        // Calculate data length and insert in head of data
-        val length: Int = if (length % 2 != 0) {
-            length / 2 + 1
-        } else {
-            length / 2
-        }
-        val stringBuilder = StringBuilder()
-        stringBuilder.append(length)
-        if (stringBuilder.length < 2) {
-            stringBuilder.insert(0, '0')
-        }
-        val dataWithLength = stringBuilder.append(this).toString()
-
-        val HEX_CHARS = "0123456789ABCDEF"
-        val result = ByteArray(dataWithLength.length / 2)
-        for (i in dataWithLength.indices step 2) {
-            val firstIndex = HEX_CHARS.indexOf(dataWithLength[i])
-            val secondIndex = HEX_CHARS.indexOf(dataWithLength[i + 1])
-            val octet = firstIndex.shl(4).or(secondIndex)
-            result[i.shr(1)] = octet.toByte()
-        }
-        return result
-    }
-
     private fun ByteArray.toHex(): String {
         return joinToString("") { "%02x".format(it) }
     }
 
-    private fun getTime8(usetime: String): String {
-        var nowTime = java.lang.Long.toHexString(getSec("20160101000000", usetime))
-        if (nowTime.length < 8) {
-            nowTime = "00000000".substring(0, 8 - nowTime.length) + nowTime
-        } else if (nowTime.length > 8) {
-            nowTime = "FFFFFFFF"
-        }
-        return nowTime
-    }
-
-    private fun getSec(time1: String, time2: String): Long {
-        var date1: Date? = null
-        var date2: Date? = null
-        return if (time1.length == 14 && time2.length == 14) {
-            val myFormatter =
-                SimpleDateFormat("yyyyMMddHHmmss")
-            try {
-                date1 = myFormatter.parse(time1)
-                date2 = myFormatter.parse(time2)
-            } catch (var9: ParseException) {
-                var9.printStackTrace()
-            }
-            abs(date1!!.time - date2!!.time) / 1000L
-        } else {
-            0L
-        }
-    }
-
-    private fun getNowTime(): String {
-        val sy1 = SimpleDateFormat("yyyyMMddHHmmss")
-        val date = Date()
-        return sy1.format(date)
-    }
-
-    private fun checkAndLog(string: String) {
-        if (showLog) {
-            Log.i("PhonekeyBLELock", "send: $string")
-        }
+    private fun checkBLEAndLog(string: String) {
         check(bluetoothHelper!=null) { "Phonekey BLE helper have not set up yet" }
+        if (showLog) {
+            Log.i(TAG, "send: $string")
+        }
     }
 
     private fun logReceive(string: String) {
         if (showLog) {
-            Log.i("PhonekeyBLELock", "receive: $string")
+            Log.i(TAG, "receive: $string")
         }
     }
 }
