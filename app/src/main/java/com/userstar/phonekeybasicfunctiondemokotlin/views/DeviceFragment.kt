@@ -16,7 +16,6 @@ import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.observe
-import androidx.navigation.fragment.findNavController
 import com.squareup.okhttp.Callback
 import com.squareup.okhttp.OkHttpClient
 import com.squareup.okhttp.Request
@@ -31,7 +30,6 @@ import org.greenrobot.eventbus.ThreadMode
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
-import kotlin.math.E
 
 class DeviceFragment : Fragment() {
 
@@ -206,7 +204,7 @@ class DeviceFragment : Fragment() {
 
     @Subscribe(threadMode = ThreadMode.MAIN)
     fun onReceiveNFCTag(nfcV: NfcV) {
-        Timber.i("receive NFC V tag")
+//        Timber.i("receive NFC V tag")
         if (tagLiveData!=null) {
             tagLiveData!!.postValue(nfcV)
         }
@@ -255,9 +253,10 @@ class DeviceFragment : Fragment() {
                 override fun onSuccess(keyA: String, keyB: String) {
                     // Store KeyA and KeyB and calculate AC3
                     // Example: http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=&a=&b=
-
+                    Timber.i("KeyA: $keyA")
+                    Timber.i("KeyB: $keyB")
                     OkHttpClient().newCall(Request.Builder()
-                        .url("http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(0, 3)}&a=$keyA&b=$keyB")
+                        .url("http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&a=$keyA&b=$keyB")
                         .build())
                         .enqueue(object : Callback {
                             override fun onFailure(request: Request?, e: IOException?) {

@@ -308,8 +308,9 @@ class PhonekeyBLELock {
     }
 
     private fun sendDataAndReceive(data: String, callback: (String) -> Unit) {
-        checkBLEAndLog(data.toUpperCase())
-        bluetoothHelper!!.write(toHexByteArrayWithLength(data.toUpperCase())) {
+        val upperCaseData = data.toUpperCase()
+        checkBLEAndLog(upperCaseData)
+        bluetoothHelper!!.write(toHexByteArrayWithLength(upperCaseData)) {
             val receiveData = (it.value as ByteArray).toHex().toUpperCase()
             logReceive(receiveData)
             callback(receiveData)
@@ -319,13 +320,13 @@ class PhonekeyBLELock {
     private fun checkBLEAndLog(string: String) {
         check(bluetoothHelper!=null) { "Phonekey BLE helper have not set up yet" }
         if (showLog) {
-            Log.i(TAG, "send: $string")
+            Log.i(TAG, "write: (${string.substring(0, 4)})${string.substring(4)}")
         }
     }
 
     private fun logReceive(string: String) {
         if (showLog) {
-            Log.i(TAG, "receive: $string")
+            Log.i(TAG, "read: (${string.substring(0, 4)})${string.substring(4)}")
         }
     }
 

@@ -63,7 +63,7 @@
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="10dp"
+        android:padding="5dp"
         android:orientation="vertical"
         android:gravity="center_horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -108,7 +108,9 @@
             android:id="@+id/reset_master_password_Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="RESET MASTER PASSWORD" />
+            android:text="RESET MASTER PASSWORD"
+            android:textColor="@android:color/holo_blue_light"
+            android:background="@android:color/transparent" />
 
     </LinearLayout>
 

@@ -14,7 +14,6 @@
         <action
             android:id="@+id/action_deviceListFragment_to_deviceFragment"
             app:destination="@id/deviceFragment">
-
             <argument
                 android:name="scanResult"
                 app:argType="android.bluetooth.le.ScanResult" />
