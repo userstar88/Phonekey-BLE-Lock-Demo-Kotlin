@@ -19,6 +19,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeybasicfunctiondemokotlin.R
 import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
+import kotlinx.android.synthetic.main.device_list_fragment.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Semaphore
 import timber.log.Timber
@@ -51,26 +52,24 @@ class DeviceListFragment : Fragment() {
         return view
     }
 
-
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
         deviceListRecyclerViewAdapter.scanResultList.clear()
         deviceListRecyclerViewAdapter.notifyDataSetChanged()
 
-        BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
-            override fun onScanFailed(errorCode: Int) {
-                super.onScanFailed(errorCode)
-                Timber.i("failed: $errorCode")
-            }
+        start_scan_button.setOnClickListener {
+            BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+                override fun onScanFailed(errorCode: Int) {
+                    super.onScanFailed(errorCode)
+                    Timber.i("failed: $errorCode")
+                }
 
-            override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                super.onScanResult(callbackType, result)
-                if (result != null && result.device.name!=null) {
-                    Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
-                    GlobalScope.launch(Dispatchers.IO) {
-                        semaphore.acquire()
-                        if (isNotConnected) {
+                override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                    super.onScanResult(callbackType, result)
+                    if (isNotConnected) {
+                        if (result != null && result.device.name!=null) {
+                            Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
                             var isNewDevice = true
                             for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
                                 if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
@@ -84,16 +83,16 @@ class DeviceListFragment : Fragment() {
                                 deviceListRecyclerViewAdapter.updateList(result)
                             }
                         }
-                        semaphore.release()
                     }
                 }
-            }
 
-            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                super.onBatchScanResults(results)
-                Timber.i(results.toString())
-            }
-        })
+                override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                    super.onBatchScanResults(results)
+                    Timber.i(results.toString())
+                }
+            })
+        }
+        start_scan_button.performClick()
 
         isNotConnected = true
         autoConnect("BKBFMLNAFBI")
@@ -140,18 +139,17 @@ class DeviceListFragment : Fragment() {
     }
 
     private fun connect(result: ScanResult) {
-        Timber.i("Connect %s", result.device.name)
 
+        var isPushed = false
         val callbackConnected = {
-            requireActivity().runOnUiThread {
-                val destination = DeviceListFragmentDirections
-                    .actionDeviceListFragmentToDeviceFragment(result)
-                findNavController().navigate(destination)
-            }
+            val destination = DeviceListFragmentDirections
+                .actionDeviceListFragmentToDeviceFragment(result)
+            findNavController().navigate(destination)
+            isPushed = true
         }
 
         val callbackDisconnected = {
-            requireActivity().runOnUiThread {
+            if (isPushed) {
                 findNavController().popBackStack()
                 requireActivity().runOnUiThread {
                     Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
@@ -166,21 +164,17 @@ class DeviceListFragment : Fragment() {
             callbackDisconnected)
     }
 
-    private val semaphore = Semaphore(1)
     private var isNotConnected = true
     private fun autoConnect(deviceName: String) {
         GlobalScope.launch(Dispatchers.IO) {
             while (isNotConnected) {
-                semaphore.acquire()
                 for (result in deviceListRecyclerViewAdapter.scanResultList) {
                     if (result.device.name == deviceName) {
-                        BLEHelper.getInstance().stopScan()
                         connect(result)
                         isNotConnected = false
                         break
                     }
                 }
-                semaphore.release()
             }
         }
     }

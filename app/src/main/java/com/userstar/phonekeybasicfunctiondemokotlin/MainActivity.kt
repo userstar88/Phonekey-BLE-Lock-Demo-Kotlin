@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
         checkPermission()
     }
 
-    var nfcAdapter: NfcAdapter? = null
+    private var nfcAdapter: NfcAdapter? = null
     override fun onResume() {
         super.onResume()
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)

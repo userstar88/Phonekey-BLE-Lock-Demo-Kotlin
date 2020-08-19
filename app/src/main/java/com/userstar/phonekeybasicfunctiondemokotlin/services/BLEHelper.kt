@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanSettings.*
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
+import org.greenrobot.eventbus.EventBus
 import timber.log.Timber
 import java.util.*
 
@@ -17,7 +18,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     companion object {
         @JvmStatic
         private var instance: BLEHelper? = null
-        fun getInstance() : BLEHelper{
+        fun getInstance() : BLEHelper {
             if (instance==null) {
                 instance = BLEHelper()
             }
@@ -29,20 +30,20 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         private val UUID_CHARACTERISTIC_NOTIFY: UUID = UUID.fromString("0000fff4-0000-1000-8000-00805f9b34fb")
     }
 
+    private var adapter: BluetoothAdapter? = null
     private lateinit var bluetoothLeScanner: BluetoothLeScanner
     private lateinit var scanCallback: ScanCallback
-
     fun startScan(
         context: Context,
         nameFilter: Array<String>?,
         callback: ScanCallback
     ) {
-        val adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
-        if (adapter==null || !adapter.isEnabled) {
+        adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+        if (adapter==null || !adapter!!.isEnabled) {
             Toast.makeText(context, "DEVICE NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
             return
         } else {
-            bluetoothLeScanner = adapter.bluetoothLeScanner
+            bluetoothLeScanner = adapter!!.bluetoothLeScanner
             scanCallback = callback
             if (nameFilter==null) {
                 Timber.i("start scan")
@@ -76,6 +77,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         connectedCallback: ()->Unit,
         disconnectedCallback: ()->Unit
     ) {
+
         bluetoothGatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
@@ -86,6 +88,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                     BluetoothProfile.STATE_CONNECTED -> {
                         Timber.i("Connected to GATT server.")
                         Timber.i("Attempting to start service discovery: ${bluetoothGatt?.discoverServices()}")
+                        BLEHelper.getInstance().stopScan()
                     }
 
                     BluetoothProfile.STATE_DISCONNECTED -> {
@@ -144,6 +147,8 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     fun disConnectBLE() {
         bluetoothGatt!!.disconnect()
+        bluetoothGatt!!.close()
+        bluetoothGatt = null
     }
 
     override lateinit var callback: (BluetoothGattCharacteristic) -> Unit
