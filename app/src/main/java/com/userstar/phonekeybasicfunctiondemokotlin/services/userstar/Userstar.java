@@ -1,5 +1,7 @@
 package com.userstar.phonekeybasicfunctiondemokotlin.services.userstar;
 
+import android.util.Log;
+
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -59,7 +61,8 @@ public class Userstar {
         return new String[] {ls_A2, ls_counter};
     }
 
-    public static byte[] toHexByteArrayWithLength(String data) {
+
+    public static String concatStringLength(String data) {
         int len;
         if (data.length() % 2 != 0) {
             len = data.length() / 2 + 1;
@@ -78,12 +81,15 @@ public class Userstar {
         if (dataWithLength.length() % 2 != 0) {
             dataWithLength = dataWithLength + "0";
         }
+        return dataWithLength;
+    }
 
-        int hexLen = dataWithLength.length();
+    public static byte[] toHexByteArray(String data) {
+        int hexLen = data.length();
         byte[] tmp = new byte[hexLen / 2];
 
         for(int i = 0; i < tmp.length; ++i) {
-            tmp[i] = (byte)Integer.parseInt(dataWithLength.substring(i * 2, i * 2 + 2), 16);
+            tmp[i] = (byte)Integer.parseInt(data.substring(i * 2, i * 2 + 2), 16);
         }
 
         return tmp;

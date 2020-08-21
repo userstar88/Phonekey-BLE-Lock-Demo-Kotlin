@@ -6,10 +6,9 @@ import android.util.Log
 import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.Userstar.*
 import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.triv
 import com.userstar.phonekeybasicfunctiondemokotlin.services.userstar.ustag
-import java.util.*
-import java.util.concurrent.locks.Lock
+import java.lang.Exception
 
-@SuppressLint("LogNotTimber", "SimpleDateFormat")
+@SuppressLint("LogNotTimber", "SimpleDateFormat", "DefaultLocale")
 class PhonekeyBLELock {
 
     val TAG = "PhonekeyBLELock"
@@ -25,13 +24,13 @@ class PhonekeyBLELock {
         LENGTH_ERROR
     }
 
-    enum class LockType {
-        REPAIR,
-        LOCKER,
-        BASKETBALL,
-        INFLATOR,
-        UNKNOWN
-    }
+//    enum class LockType {
+//        REPAIR,
+//        LOCKER,
+//        BASKETBALL,
+//        INFLATOR,
+//        UNKNOWN
+//    }
 
     companion object {
         private var instance: PhonekeyBLELock? = null
@@ -59,6 +58,7 @@ class PhonekeyBLELock {
     fun isActive(callback: (Boolean) -> Unit) {
         val data = "0100"
         sendDataAndReceive(data) { receivedData ->
+            // 0100
             val isActive = receivedData.substring(4, 6) == "01"
             callback(isActive)
         }
@@ -71,6 +71,7 @@ class PhonekeyBLELock {
     fun getStatus(callback: StatusListener) {
         val data = "0399"
         sendDataAndReceive(data) { receivedData ->
+            // 0399
             val battery = receivedData.substring(6, 8)
             val version = receivedData.substring(10, 12)
             val isClosing = receivedData.substring(14, 16) == "01"
@@ -87,29 +88,27 @@ class PhonekeyBLELock {
     fun activate(nfcV: NfcV, deviceName: String, masterPassword: String, listener: ActivateListener) {
         var data = "0501"
         sendDataAndReceive(data) { receivedData ->
-            val T1 = receivedData.substring(4)
-            val vData = ustag(nfcV).getVdata(T1)
-            val uid = vData[0]
-            val ac3 = vData[1]
-            val counter = vData[2] + "01"
-            val nowTime = get_time_8(get_nowtime())
-            data = "0507$uid$nowTime"
-            sendDataAndReceive(data) {
-                data = "0503$ac3$counter"
-                sendDataAndReceive(data) { receivedData ->
-                    when (receivedData.substring(4, 5)) {
-                        "1" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT, receivedData.substring(5, 6).toInt(), -1)
-                        "3" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
-                        "7" -> listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
-                        else -> {
-                            val encryptedMasterPasswordKey = encryptMasterPassword(deviceName, T1, masterPassword)
-                            data = "0505${encryptedMasterPasswordKey[0]}${encryptedMasterPasswordKey[1]}"
-                            sendDataAndReceive(data) {
-                                listener.onSuccess()
-                            }
-                        }
-                    }
+            // 0502
+            val t1 = receivedData.substring(4)
+            try {
+                val vData = ustag(nfcV).getVdata(t1)
+                val uid = vData[0]
+                val ac3 = vData[1]
+                val counter = vData[2] + "01"
+
+                val nowTime = get_time_8(get_nowtime())
+
+                data = "0507$uid$nowTime"
+                sendDataAndReceive(data) {
+                    // 0508
+
+                    setMasterPassword(t1, ac3, counter, deviceName, masterPassword, listener)
                 }
+
+//                setMasterPassword(t1, uid, ac3, counter, deviceName, masterPassword, listener)
+            } catch (e: Exception) {
+                listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+                e.printStackTrace()
             }
         }
     }
@@ -121,29 +120,21 @@ class PhonekeyBLELock {
         } else {
             var data = "0501"
             sendDataAndReceive(data) { receivedData ->
-                val T1 = receivedData.substring(4)
+                // 0502
+                val t1 = receivedData.substring(4)
                 val uid = code.substring(0, 16)
                 val ac3 = code.substring(16, 36)
                 val counter = "0000000002"
                 val nowTime = get_time_8(get_nowtime())
+
                 data = "0507$uid$nowTime"
                 sendDataAndReceive(data) {
-                    data = "0503$ac3${counter}"
-                    sendDataAndReceive(data) { receivedData ->
-                        when (receivedData.substring(4, 5)) {
-                            "1" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT, receivedData.substring(5, 6).toInt(), -1)
-                            "3" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
-                            "7" -> listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
-                            else -> {
-                                val encryptedMasterPasswordKey = encryptMasterPassword(deviceName, T1, masterPassword)
-                                data = "0505${encryptedMasterPasswordKey[0]}${encryptedMasterPasswordKey[1]}"
-                                sendDataAndReceive(data) {
-                                    listener.onSuccess()
-                                }
-                            }
-                        }
-                    }
+                    // 0508
+
+                    setMasterPassword(t1, ac3, counter, deviceName, masterPassword, listener)
                 }
+
+//                setMasterPassword(t1, uid, ac3, counter, deviceName, masterPassword, listener)
             }
         }
     }
@@ -157,21 +148,32 @@ class PhonekeyBLELock {
     fun deactivate(masterPassword: String, listener: DeactivateListener) {
         var data = "0601"
         sendDataAndReceive(data) { receivedData ->
-            val T1 = receivedData.substring(4)
+            // 0602
+            val t1 = receivedData.substring(4)
             val trimmedMasterPassword = triv.get_triv(
-                T1,
+                t1,
                 masterPassword.substring(0, 12),
-                masterPassword.substring(12, 16) + T1.substring(0, 4),
+                masterPassword.substring(12, 16) + t1.substring(0, 4),
                 "00000000000000000000"
-            )
+            ).toString()
             data = "0603$trimmedMasterPassword"
             sendDataAndReceive(data) { receivedData ->
+                // 0604
                 when (receivedData.substring(4, 5)) {
-                    "0" -> listener.onFailed(MasterPasswordStatus.PASSWORD_INCORRECT, receivedData.substring(5).toInt(), -1)
-                    "2" -> listener.onFailed(MasterPasswordStatus.PASSWORD_INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
+                    "0" -> listener.onFailed(
+                        MasterPasswordStatus.PASSWORD_INCORRECT, receivedData.substring(
+                            5
+                        ).toInt(), -1
+                    )
+                    "2" -> listener.onFailed(
+                        MasterPasswordStatus.PASSWORD_INCORRECT_3_TIMES, -1, receivedData.substring(
+                            5
+                        ).toInt()
+                    )
                     else -> {
                         data = "99AC"
                         sendDataAndReceive(data) {
+                            // 99AD
                             listener.onSuccess()
                         }
                     }
@@ -181,38 +183,56 @@ class PhonekeyBLELock {
     }
 
     /*---------------------Create Key---------------------------------------------------------------------------------*/
-    interface CreateKeyListener {
+    interface EstablishKeyListener {
         fun onFailed(status: MasterPasswordStatus, errorTimes: Int, needToWait: Int)
         fun onSuccess(keyA: String, keyB: String)
     }
 
-    fun createKey(masterPassword: String, callback: CreateKeyListener) {
+    fun establishKey(masterPassword: String, callback: EstablishKeyListener) {
         var data = "0601"
         sendDataAndReceive(data) { receivedData ->
-            val T1 = receivedData.substring(4)
-            val trimmedMasterPassword = triv.get_triv(T1, masterPassword.substring(0, 12), masterPassword.substring(12, 16) + T1.substring(0, 4), "00000000000000000000")
+            // 0602
+            val t1 = receivedData.substring(4)
+            val trimmedMasterPassword = triv.get_triv(
+                t1, masterPassword.substring(0, 12), masterPassword.substring(
+                    12,
+                    16
+                ) + t1.substring(0, 4), "00000000000000000000"
+            ).toString()
             data = "0603$trimmedMasterPassword"
             sendDataAndReceive(data) { receivedData ->
-
+                // 0604
                 if (receivedData.substring(4, 5) != "1") {
                     when (receivedData.substring(4, 5)) {
-                        "0" -> callback.onFailed(MasterPasswordStatus.PASSWORD_INCORRECT, receivedData.substring(5).toInt(), -1)
-                        "2" -> callback.onFailed(MasterPasswordStatus.PASSWORD_INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
+                        "0" -> callback.onFailed(
+                            MasterPasswordStatus.PASSWORD_INCORRECT, receivedData.substring(
+                                5
+                            ).toInt(), -1
+                        )
+                        "2" -> callback.onFailed(
+                            MasterPasswordStatus.PASSWORD_INCORRECT_3_TIMES,
+                            -1,
+                            receivedData.substring(
+                                5
+                            ).toInt()
+                        )
                     }
                 } else {
                     data = "0101"
-                    sendDataAndReceive(data) { receivedData ->
-                        val lockType = when (receivedData.subSequence(3, 4)) {
-                            "01" -> LockType.REPAIR
-                            "02" -> LockType.LOCKER
-                            "03" -> LockType.BASKETBALL
-                            "04" -> LockType.INFLATOR
-                            else -> LockType.UNKNOWN
-                        }
+                    sendDataAndReceive(data) {
+                        // 0102
+//                        val lockType = when (receivedData.subSequence(3, 4)) {
+//                            "01" -> LockType.REPAIR
+//                            "02" -> LockType.LOCKER
+//                            "03" -> LockType.BASKETBALL
+//                            "04" -> LockType.INFLATOR
+//                            else -> LockType.UNKNOWN
+//                        }
 
                         val keyA = random_value(2, 20)
                         data = "010301$keyA"
                         sendDataAndReceive(data) { receivedData ->
+                            // 0104
                             val keyB = receivedData.substring(6)
                             callback.onSuccess(keyA, keyB)
                         }
@@ -222,33 +242,98 @@ class PhonekeyBLELock {
         }
     }
 
-    fun resetMasterPassword(nfcV: NfcV, deviceName: String, newMasterPassword: String, listener: ActivateListener) {
-        var data = "0501"
+    /*--------------------------Set password-----------------------------------------------------*/
+
+    fun resetMasterPassword(oldMasterPassword: String, deviceName: String, newMasterPassword: String, listener: ActivateListener) {
+        Log.i(TAG, "old: $oldMasterPassword,  new: $newMasterPassword")
+        val data = "0501"
         sendDataAndReceive(data) { receivedData ->
             // 0502
-            val T1 = receivedData.substring(4)
-            val vData = ustag(nfcV).getVdata(T1)
+            val t1 = receivedData.substring(4)
+            val trimmedPassword = triv.get_triv(
+                t1,
+                oldMasterPassword.substring(0, 12),
+                oldMasterPassword.substring(12, 16) + t1.substring(0, 4),
+                "00000000000000000000"
+            ).toString()
+
+            setMasterPassword(t1, trimmedPassword, "", deviceName, newMasterPassword, listener)
+//            setMasterPassword(t1, "0000000000000000", trimmedPassword, "", deviceName, newMasterPassword, listener)
+        }
+    }
+
+    fun resetMasterPassword(nfcV: NfcV, deviceName: String, newMasterPassword: String, listener: ActivateListener) {
+        val data = "0501"
+        sendDataAndReceive(data) { receivedData ->
+            // 0502
+            val t1 = receivedData.substring(4)
+            val vData = ustag(nfcV).getVdata(t1)
+            val uid = vData[0]
             val ac3 = vData[1]
             val counter = vData[2] + "01"
 
-            data = "0503$ac3$counter"
-            sendDataAndReceive(data) { receivedData ->
-                when (receivedData.substring(4, 5)) {
-                    "1" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT, receivedData.substring(5, 6).toInt(), -1)
-                    "3" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
-                    "7" -> listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
-                    else -> {
-                        val encryptedMasterPasswordKey = encryptMasterPassword(deviceName, T1, newMasterPassword)
-                        data = "0505${encryptedMasterPasswordKey[0]}${encryptedMasterPasswordKey[1]}"
-                        sendDataAndReceive(data) {
-                            listener.onSuccess()
-                        }
+            setMasterPassword(t1, ac3, counter, deviceName, newMasterPassword, listener)
+//            setMasterPassword(t1, uid, ac3, counter, deviceName, newMasterPassword, listener)
+        }
+    }
+
+//    private fun setMasterPassword(T1: String, uid: String?, ac3: String, counter: String, deviceName: String, masterPassword: String ,listener: ActivateListener) {
+//        val nowTime = get_time_8(get_nowtime())
+//        var data = "0507${uid?:""}$nowTime"
+//        sendDataAndReceive(data) {
+//            // 0508
+//
+//            data = "0503$ac3$counter"
+//            sendDataAndReceive(data) { receivedData ->
+//                // 0504
+//                when (receivedData.substring(4, 5)) {
+//                    "1" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT, receivedData.substring(5, 6).toInt(), -1)
+//                    "3" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
+//                    "7" -> listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+//                    else -> {
+//                        Log.i(TAG, "Set master password: $masterPassword")
+//                        val encryptedMasterPasswordKey = encryptMasterPassword(
+//                            deviceName,
+//                            T1,
+//                            masterPassword
+//                        )
+//                        data = "0505${encryptedMasterPasswordKey[0]}${encryptedMasterPasswordKey[1]}"
+//                        sendDataAndReceive(data) {
+//                            // 0506
+//                            listener.onSuccess()
+//                        }
+//                    }
+//                }
+//            }
+//        }
+//    }
+
+    private fun setMasterPassword(T1: String, ac3: String, counter: String, deviceName: String, masterPassword: String ,listener: ActivateListener) {
+        var data = "0503$ac3$counter"
+        sendDataAndReceive(data) { receivedData ->
+            // 0504
+            when (receivedData.substring(4, 5)) {
+                "1" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT, receivedData.substring(5, 6).toInt(), -1)
+                "3" -> listener.onFailed(ActivationCodeStatus.CODE_INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
+                "7" -> listener.onFailed(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
+                else -> {
+                    Log.i(TAG, "Set master password: $masterPassword")
+                    val encryptedMasterPasswordKey = encryptMasterPassword(
+                        deviceName,
+                        T1,
+                        masterPassword
+                    )
+                    data = "0505${encryptedMasterPasswordKey[0]}${encryptedMasterPasswordKey[1]}"
+                    sendDataAndReceive(data) {
+                        // 0506
+                        listener.onSuccess()
                     }
                 }
             }
         }
     }
 
+    /*---------------------Open---------------------------------------------------------------------------------*/
     interface OpenListener {
         fun onAC3Error()
         fun onSuccess(keyB: String)
@@ -257,60 +342,34 @@ class PhonekeyBLELock {
     fun getT1(callback: (String) -> Unit) {
         val data = "020104"
         sendDataAndReceive(data) { receivedData ->
-            val T1 = receivedData.substring(4)
-            callback(T1)
+            // 0202
+            val t1 = receivedData.substring(4)
+            callback(t1)
         }
     }
 
     fun open(ac3: String, listener: OpenListener) {
         var data = "0203$ac3"
-        var status: String? = null
-        var keyB: String
         sendDataAndReceive(data) { receivedData ->
-            when (receivedData.substring(4, 5)) {
-                "00" -> listener.onAC3Error()
+            // 0204
+            when (receivedData.substring(5, 6)) {
+                "00" -> Log.e(TAG, "AC3 Error")
                 "01" -> {
                     data = "020501"
                     sendDataAndReceive(data) { receivedData ->
+                        // 0206
                         val keyB = receivedData.substring(6)
                         listener.onSuccess(keyB)
                     }
                 }
             }
         }
-//        val timer = Timer()
-//        var counter = 0
-//        timer.schedule(object : TimerTask() {
-//            override fun run() {
-//                if (status==null) {
-//                    timer.cancel()
-//                    open(ac3, listener)
-//                } else if (status=="00") {
-//                    if (counter<3) {
-//                        data = "020500"
-//                        ++counter
-//                        sendDataAndReceive(data) { receivedData ->
-//                            status = receivedData.substring(4, 5)
-//                            if (status=="01") {
-//                                keyB = receivedData.substring(6)
-//                            }
-//                        }
-//                    } else {
-//                        timer.cancel()
-//                        listener.onFailed()
-//                    }
-//                } else {
-//                    timer.cancel()
-//
-//                }
-//            }
-//        }, 500, 1000)
     }
 
     private fun sendDataAndReceive(data: String, callback: (String) -> Unit) {
-        val upperCaseData = data.toUpperCase()
-        checkBLEAndLog(upperCaseData)
-        bluetoothHelper!!.write(toHexByteArrayWithLength(upperCaseData)) {
+        val dataWithLength = concatStringLength(data)
+        checkBLEAndLog(dataWithLength)
+        bluetoothHelper!!.write(toHexByteArray(dataWithLength)) {
             val receiveData = (it.value as ByteArray).toHex().toUpperCase()
             logReceive(receiveData)
             callback(receiveData)
@@ -318,15 +377,15 @@ class PhonekeyBLELock {
     }
 
     private fun checkBLEAndLog(string: String) {
-        check(bluetoothHelper!=null) { "Phonekey BLE helper have not set up yet" }
+        check(bluetoothHelper != null) { "Phonekey BLE helper have not set up yet" }
         if (showLog) {
-            Log.i(TAG, "write: (${string.substring(0, 4)})${string.substring(4)}")
+            Log.i(TAG, "write: (${string.substring(0, 6)})${string.substring(6)}")
         }
     }
 
     private fun logReceive(string: String) {
         if (showLog) {
-            Log.i(TAG, "read: (${string.substring(0, 4)})${string.substring(4)}")
+            Log.i(TAG, " read: (${string.substring(0, 4)})${string.substring(4)}")
         }
     }
 

@@ -12,17 +12,12 @@ public class ustag {
     private int countDown = 20;
     private int wsbRetryLimit = 3;
 
-    public ustag(NfcV paramNfcV) {
+    public ustag(NfcV paramNfcV) throws IOException {
         this.nfcv = paramNfcV;
         this.tagid = paramNfcV.getTag().getId();
         if (!this.nfcv.isConnected()) {
-            try {
-                this.nfcv.connect();
-            } catch (IOException var3) {
-                var3.printStackTrace();
-            }
+            this.nfcv.connect();
         }
-
     }
 
     public byte[] RSB(int blockno) throws IOException {
@@ -30,10 +25,6 @@ public class ustag {
         int localCountDown = this.countDown;
         if (this.tagid.length >= 8) {
             System.arraycopy(this.tagid, 0, localObject1, 2, 8);
-        }
-
-        if (this.nfcv != null) {
-
         }
 
         while(true) {
@@ -90,14 +81,14 @@ public class ustag {
                 arrayOfByte = this.nfcv.transceive(localObject1);
                 if (arrayOfByte != null) {
                     return arrayOfByte;
+                } else {
+                    Log.w("ustag read block", "arrayOfByte==null");
                 }
-
-                Log.i("ustag read block:", "arrayOfByte==null");
-            } catch (Exception var9) {
-                Log.i("ustag Exception", "WSB(" + Integer.toString(blockno) + ")" + var9.toString());
+            } catch (IOException exception) {
+                Log.i("ustag exception", "WSB(" + blockno + ")" + exception.toString());
                 if (blockno == 25) {
                     Log.i("ustag write exception", "WSB 25 fail, retry the whole process");
-                    throw new ustag.WSB25FailException(var9.toString());
+                    throw new ustag.WSB25FailException(exception.toString());
                 }
 
                 if (blockno == 23) {
@@ -105,22 +96,22 @@ public class ustag {
                 }
 
                 if (localCountDown <= 0) {
-                    throw new IOException(var9.toString());
+                    throw new IOException(exception.toString());
                 }
 
-                Log.i("ustag write exception", "write agin");
+                Log.i("ustag write exception", "write again");
                 --localCountDown;
 
                 try {
                     Thread.sleep(this.time);
-                } catch (InterruptedException var8) {
-                    var8.printStackTrace();
+                } catch (InterruptedException var7) {
+                    var7.printStackTrace();
                 }
             }
         }
     }
 
-    public void WMBbyWSB(int blockno, byte[] data) throws IOException, ustag.WSB25FailException {
+    public void WMBbyWSB(int blockno, byte[] data) throws IOException, ustag.WSB25FailException, InterruptedException {
         int NOB = data.length % 4 == 0 ? data.length / 4 : data.length / 4 + 1;
         byte[] newdata = new byte[NOB * 4];
         byte[] tmpdata = new byte[4];
@@ -130,7 +121,6 @@ public class ustag {
             System.arraycopy(newdata, i * 4, tmpdata, 0, 4);
             this.WSB(blockno + i, tmpdata);
         }
-
     }
 
     public String cmd(String code) throws Exception {
@@ -169,18 +159,14 @@ public class ustag {
         return RearrangeData(getHexString(this.tagid));
     }
 
-    public String[] getVdata(String T1) {
+    public String[] getVdata(String T1) throws Exception {
         String[] ls_return = new String[3];
 
-        try {
-            this.WMBbyWSB(23, hexstr2byte(RearrangeData(T1 + "0002")));
-            ls_return[0] = this.getUID();
-            String ls_data = getHexString(this.RMBbyRSB(23, 4));
-            ls_return[1] = RearrangeData(ls_data.substring(4, 24));
-            ls_return[2] = RearrangeData(ls_data.substring(24, 32));
-        } catch (Exception var4) {
-            var4.printStackTrace();
-        }
+        this.WMBbyWSB(23, hexstr2byte(RearrangeData(T1 + "0002")));
+        ls_return[0] = this.getUID();
+        String ls_data = getHexString(this.RMBbyRSB(23, 4));
+        ls_return[1] = RearrangeData(ls_data.substring(4, 24));
+        ls_return[2] = RearrangeData(ls_data.substring(24, 32));
 
         return ls_return;
     }
@@ -273,7 +259,7 @@ public class ustag {
         return tmp;
     }
 
-    class WSB25FailException extends Exception {
+    public class WSB25FailException extends Exception {
         private static final long serialVersionUID = 1429730699996073415L;
 
         public WSB25FailException(String message) {

@@ -69,7 +69,7 @@ class DeviceListFragment : Fragment() {
                     super.onScanResult(callbackType, result)
                     if (isNotConnected) {
                         if (result != null && result.device.name!=null) {
-                            Timber.i("discover name=${result.device.name}, address=${result.device.address}, rssi=${result.rssi}")
+                            Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
                             var isNewDevice = true
                             for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
                                 if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
@@ -95,7 +95,7 @@ class DeviceListFragment : Fragment() {
         start_scan_button.performClick()
 
         isNotConnected = true
-        autoConnect("BKBFMLNAFBI")
+//        autoConnect("BKBFMLNAFBI")
     }
 
     inner class DeviceListRecyclerViewAdapter : RecyclerView.Adapter<DeviceListRecyclerViewAdapter.ViewHolder>() {
@@ -140,6 +140,7 @@ class DeviceListFragment : Fragment() {
 
     private fun connect(result: ScanResult) {
 
+        Timber.i("Try to connect: ${result.device.name},  ${result.device.address}")
         var isPushed = false
         val callbackConnected = {
             val destination = DeviceListFragmentDirections
