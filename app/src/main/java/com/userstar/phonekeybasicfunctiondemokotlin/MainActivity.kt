@@ -10,6 +10,7 @@ import android.nfc.Tag
 import android.nfc.tech.NfcV
 import android.os.Bundle
 import android.os.Parcelable
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -33,12 +34,12 @@ class MainActivity : AppCompatActivity() {
         checkPermission()
     }
 
-    private var nfcAdapter: NfcAdapter? = null
     override fun onResume() {
         super.onResume()
-        nfcAdapter = NfcAdapter.getDefaultAdapter(this)
+
+        val nfcAdapter = NfcAdapter.getDefaultAdapter(this)
         if (nfcAdapter != null) {
-            nfcAdapter!!.enableForegroundDispatch(
+            nfcAdapter.enableForegroundDispatch(
                 this,
                 PendingIntent.getActivity(
                     this,
@@ -50,10 +51,9 @@ class MainActivity : AppCompatActivity() {
                     IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
                 ),
                 null)
-
-
         } else {
             Timber.w("Can't no get NFC adapter")
+            Toast.makeText(this, "This device does not support NFC", Toast.LENGTH_SHORT).show()
         }
     }
 

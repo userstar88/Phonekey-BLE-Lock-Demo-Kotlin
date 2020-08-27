@@ -2,30 +2,23 @@ package com.userstar.phonekeybasicfunctiondemokotlin.views
 
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
-import android.os.Build
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
-import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeybasicfunctiondemokotlin.R
-import com.userstar.phonekeybasicfunctiondemokotlin.services.BLEHelper
+import com.userstar.phonekeybasicfunctiondemokotlin.BLEHelper
 import kotlinx.android.synthetic.main.device_list_fragment.*
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Semaphore
 import timber.log.Timber
-import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
-import kotlin.collections.ArrayList
 
 class DeviceListFragment : Fragment() {
 
@@ -58,44 +51,44 @@ class DeviceListFragment : Fragment() {
         deviceListRecyclerViewAdapter.scanResultList.clear()
         deviceListRecyclerViewAdapter.notifyDataSetChanged()
 
-        start_scan_button.setOnClickListener {
-            BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
-                override fun onScanFailed(errorCode: Int) {
-                    super.onScanFailed(errorCode)
-                    Timber.i("failed: $errorCode")
-                }
+        auto_connect_Button.setOnClickListener {
+            autoConnect("BKBFMLNAFBI")
+        }
 
-                override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                    super.onScanResult(callbackType, result)
-                    if (isNotConnected) {
-                        if (result != null && result.device.name!=null) {
-                            Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
-                            var isNewDevice = true
-                            for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                                if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                    deviceListRecyclerViewAdapter.updateRssi(position, result)
-                                    isNewDevice = false
-                                    break
-                                }
+        BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+            override fun onScanFailed(errorCode: Int) {
+                super.onScanFailed(errorCode)
+                Timber.i("failed: $errorCode")
+            }
+
+            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                super.onScanResult(callbackType, result)
+                if (isNotConnected) {
+                    if (result != null && result.device.name!=null) {
+                        Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
+                        var isNewDevice = true
+                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
+                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                deviceListRecyclerViewAdapter.updateRssi(position, result)
+                                isNewDevice = false
+                                break
                             }
-                            if (isNewDevice) {
-                                // Add new devices
-                                deviceListRecyclerViewAdapter.updateList(result)
-                            }
+                        }
+                        if (isNewDevice) {
+                            // Add new devices
+                            deviceListRecyclerViewAdapter.updateList(result)
                         }
                     }
                 }
+            }
 
-                override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                    super.onBatchScanResults(results)
-                    Timber.i(results.toString())
-                }
-            })
-        }
-        start_scan_button.performClick()
+            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                super.onBatchScanResults(results)
+                Timber.i(results.toString())
+            }
+        })
 
         isNotConnected = true
-//        autoConnect("BKBFMLNAFBI")
     }
 
     inner class DeviceListRecyclerViewAdapter : RecyclerView.Adapter<DeviceListRecyclerViewAdapter.ViewHolder>() {
