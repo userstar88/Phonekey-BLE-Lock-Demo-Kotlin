@@ -8,7 +8,7 @@ import android.bluetooth.le.ScanSettings
 import android.bluetooth.le.ScanSettings.*
 import android.content.Context
 import android.widget.Toast
-import com.userstar.phonekeybasicfunctiondemokotlin.userstar.AbstractPhonekeyBLEHelper
+import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
 import timber.log.Timber
 import java.util.*
 

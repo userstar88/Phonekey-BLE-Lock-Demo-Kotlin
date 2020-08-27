@@ -26,8 +26,7 @@ import com.squareup.okhttp.Request
 import com.squareup.okhttp.Response
 import com.userstar.phonekeybasicfunctiondemokotlin.R
 import com.userstar.phonekeybasicfunctiondemokotlin.BLEHelper
-import com.userstar.phonekeybasicfunctiondemokotlin.userstar.PhonekeyBLELock
-import com.userstar.phonekeybasicfunctiondemokotlin.userstar.AbstractPhonekeyBLEHelper
+import com.userstar.phonekeyblelock.PhonekeyBLELock
 import kotlinx.android.synthetic.main.device_fragment.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope

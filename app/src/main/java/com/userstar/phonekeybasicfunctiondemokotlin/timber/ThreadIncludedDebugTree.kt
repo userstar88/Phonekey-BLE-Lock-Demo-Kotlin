@@ -11,7 +11,6 @@ open class ThreadIncludedDebugTree : Timber.DebugTree() {
     ) {
         var tag = tag
         if (tag != null) {
-            val threadName = Thread.currentThread().name
             tag = "$tag"
         }
         super.log(priority, tag, message, t)
