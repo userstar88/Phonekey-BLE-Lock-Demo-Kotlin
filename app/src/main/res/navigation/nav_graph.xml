@@ -8,7 +8,7 @@
 
     <fragment
         android:id="@+id/deviceListFragment"
-        android:name="com.userstar.phonekeybasicfunctiondemokotlin.views.DeviceListFragment"
+        android:name="com.userstar.phonekeyblelockdemokotlin.views.DeviceListFragment"
         android:label="device_list_fragment"
         tools:layout="@layout/device_list_fragment" >
         <action
@@ -21,7 +21,7 @@
     </fragment>
     <fragment
         android:id="@+id/deviceFragment"
-        android:name="com.userstar.phonekeybasicfunctiondemokotlin.views.DeviceFragment"
+        android:name="com.userstar.phonekeyblelockdemokotlin.views.DeviceFragment"
         android:label="device_fragment"
         tools:layout="@layout/device_fragment" />
 </navigation>
