@@ -672,14 +672,14 @@ class PhonekeyBLELock private constructor(
          *
          * @param newKeyB the new KeyB
          * */
-        fun onSuccess(newKeyB: String)
+        fun onSuccess(newKeyB: String, secs: Int)
     }
     /**
      * Open the lock
      * Use ac3 as key to open the lock, ac3 will be verified
-     * 1. Write 0203 with AC3 and receive 0204XXYYYYYYYYYYYYYYYYYYYY
-     *      XX == "00" -> AC3 is incorrect, there won't be YYYYYYYYYYYYYYYYYYYY
-     *      XX == "01" -> AC3 is correct, open successfully, YYYYYYYYYYYYYYYYYYYY is new KeyB
+     * 1. Write 0203 with AC3 and receive 0204XXYYYYYYYYYYYYYYYYYYYYZZ
+     *      XX == "00" -> AC3 is incorrect, there won't be YYYYYYYYYYYYYYYYYYYY,
+     *      XX == "01" -> AC3 is correct, open successfully, YYYYYYYYYYYYYYYYYYYY is new KeyB, ZZ means to wait ZZ seconds
      *
      * @param ac3 Calculate by T1(from getT1()), KeyA and KeyB(from successfully established key)
      * @see getT1
@@ -691,7 +691,7 @@ class PhonekeyBLELock private constructor(
             // 0204
             when (receivedData.substring(5, 6)) {
                 "0" -> Log.e(TAG, "AC3 Error")
-                "1" -> listener.onSuccess(receivedData.substring(6))
+                "1" -> listener.onSuccess(receivedData.substring(6, 26), receivedData.substring(27, 28).toInt())
             }
         }
     }
@@ -869,7 +869,7 @@ class PhonekeyBLELock private constructor(
 
     private fun checkBLEAndLog(string: String) {
         check(phonekeyBLEHelper != null) { "Phonekey BLE helper doesn't set" }
-        check( deviceName != null ) { "Device name doesn't set" }
+        check(deviceName != null ) { "Device name doesn't set" }
         if (isLog) {
             Log.i(TAG, "write: (${string.substring(0, 4)})${string.substring(4)}")
         }

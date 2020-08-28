@@ -7,6 +7,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class Userstar {
+
     public static String random_value(int difficult, int num) {
         StringBuilder ls_random = new StringBuilder();
 

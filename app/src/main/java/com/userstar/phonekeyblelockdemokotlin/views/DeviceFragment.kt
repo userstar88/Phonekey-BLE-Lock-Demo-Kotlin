@@ -38,6 +38,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
+import java.util.*
 
 @SuppressLint("SetTextI18n")
 class DeviceFragment : Fragment() {
@@ -511,38 +512,58 @@ class DeviceFragment : Fragment() {
         }
     }
 
+    private var canOpen = true
+    private var secs = 0
     private fun openLock() {
-        phonekeyBLELock.getT1 { T1 ->
-            val response = OkHttpClient().newCall(Request.Builder()
-                .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&t1=$T1")
-                .build())
-                .execute()
-            Timber.i("$response")
+        if (canOpen) {
+            phonekeyBLELock.getT1 { T1 ->
+                val response = OkHttpClient().newCall(Request.Builder()
+                    .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&t1=$T1")
+                    .build())
+                    .execute()
+                Timber.i("$response")
 
-            if (response != null && response.isSuccessful) {
-                val jsonObject = JSONObject(response.body().string())
-                response.body().close()
-                Timber.i("response: $jsonObject")
+                if (response != null && response.isSuccessful) {
+                    val jsonObject = JSONObject(response.body().string())
+                    response.body().close()
+                    Timber.i("response: $jsonObject")
 
-                try {
-                    val ac3 = jsonObject.getString("ac3")
-                    val pk = jsonObject.getString("pk")
-                    phonekeyBLELock.open(ac3, object : PhonekeyBLELock.OpenListener {
-                        override fun onAC3Error() {
-                            makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
-                        }
+                    try {
+                        val ac3 = jsonObject.getString("ac3")
+                        val pk = jsonObject.getString("pk")
+                        phonekeyBLELock.open(ac3, object : PhonekeyBLELock.OpenListener {
+                            override fun onAC3Error() {
+                                makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
+                            }
 
-                        override fun onSuccess(newKeyB: String) {
-                            makeToastAndLog("Open successfully, update keyB", 1)
-                            updateLockKeyB(newKeyB, pk)
-                        }
-                    })
-                } catch (e: JSONException) {
-                    makeToastAndLog("Failed to get AC3", 0)
+                            override fun onSuccess(newKeyB: String, secs: Int) {
+                                makeToastAndLog("Open successfully, update keyB", 1)
+                                Timber.i("new keyB: $newKeyB")
+                                updateLockKeyB(newKeyB, pk)
+                                canOpen = false
+                                this@DeviceFragment.secs = secs
+                                val timer = Timer()
+                                timer.schedule(object : TimerTask() {
+                                    override fun run() {
+                                        if (this@DeviceFragment.secs > 0) {
+                                            this@DeviceFragment.secs -= 1
+                                        } else {
+                                            canOpen = true
+                                            timer.cancel()
+                                        }
+                                    }
+                                }, 0, 1000)
+                            }
+                        })
+                    } catch (e: JSONException) {
+                        makeToastAndLog("Failed to get AC3", 0)
+                    }
+                } else {
+                    makeToastAndLog("Get AC3 ERROR.", 0)
                 }
-            } else {
-                makeToastAndLog("Get AC3 ERROR.", 0)
             }
+        } else {
+            makeToastAndLog("Need to wait $secs secs", 1)
         }
     }
 
