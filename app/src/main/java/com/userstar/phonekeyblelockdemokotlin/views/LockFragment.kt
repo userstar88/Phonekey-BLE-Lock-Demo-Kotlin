@@ -249,6 +249,7 @@ class LockFragment : Fragment() {
 
                             override fun onSuccess() {
                                 makeToastAndLog("Activate successfully!", 1)
+                                updateLockStatus()
                             }
                         })
                     }
@@ -298,6 +299,7 @@ class LockFragment : Fragment() {
 
                             override fun onSuccess() {
                                 makeToastAndLog("Activate successfully!", 1)
+                                updateLockStatus()
                             }
                         })
                     }
