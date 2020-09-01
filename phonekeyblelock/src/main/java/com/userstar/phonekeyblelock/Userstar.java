@@ -46,10 +46,10 @@ public class Userstar {
         return ls_random.toString().toUpperCase();
     }
 
-    public static String[] encryptDevicePassword(String deviceName, String T1, String masterPassword) {
+    public static String[] encryptLockPassword(String lockName, String T1, String masterPassword) {
         String ls_A2 = "00000000000000000000000000000000";
         String ls_counter = random_value(2, 2).toUpperCase();
-        String ls_mac = AES.parseAscii2HexStr(deviceName.substring(3, 11)).toUpperCase();
+        String ls_mac = AES.parseAscii2HexStr(lockName.substring(3, 11)).toUpperCase();
         String ls_t2 = triv.get_triv(T1, ls_mac.substring(0, 12), ls_mac.substring(12, 16) + ls_counter + ls_counter, "00000000000000000000");
         String ls_entmaster = AES.parseHexStr2Ascii(masterPassword + masterPassword);
         String ls_t3 = AES.parseHexStr2Ascii(ls_t2 + ls_t2.substring(0, 12));

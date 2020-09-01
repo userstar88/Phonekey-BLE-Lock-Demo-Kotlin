@@ -12,8 +12,8 @@ import android.bluetooth.BluetoothGattCharacteristic
 abstract class AbstractPhonekeyBLEHelper {
 
     /**
-     *   In your write function, you have to at least implement these three lines
-     *       1. assign the callback
+     *   In 'write' function, must at least implement these three lines
+     *       1. assign the callback for receive data
      *       2. set the gatt characteristic
      *       3. write gatt characteristic with BluetoothGatt instance
      *
@@ -25,7 +25,7 @@ abstract class AbstractPhonekeyBLEHelper {
 
     /**
      *   This callback must be put in where bluetooth gatt characteristic notified
-     *   The lock receives data through notify mode service
+     *   The app receives data through notify mode service
      *   Normally, it is BluetoothGattCallback.onCharacteristicChanged(BluetoothGatt?, BluetoothGattCharacteristic?)
      */
     abstract var callback: (BluetoothGattCharacteristic) -> Unit

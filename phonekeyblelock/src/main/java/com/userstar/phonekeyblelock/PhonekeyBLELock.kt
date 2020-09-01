@@ -9,7 +9,7 @@ import java.lang.Exception
 @SuppressLint("LogNotTimber", "SimpleDateFormat", "DefaultLocale")
 class PhonekeyBLELock private constructor(
     private var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
-    private var deviceName: String? = null,
+    private var lockName: String? = null,
     var isLog: Boolean = true
 ) {
 
@@ -25,7 +25,7 @@ class PhonekeyBLELock private constructor(
         return isReady
     }
 
-    enum class DevicePasswordStatus {
+    enum class LockPasswordStatus {
         CORRECT,
         INCORRECT,
         INCORRECT_3_TIMES,
@@ -47,7 +47,7 @@ class PhonekeyBLELock private constructor(
 
     data class Builder(
         var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
-        var deviceName: String? = null,
+        var lockName: String? = null,
         var isLog: Boolean? = null
     ) {
         /**
@@ -62,13 +62,13 @@ class PhonekeyBLELock private constructor(
         }
 
         /**
-         * Set the device name, for some encryption.
+         * Set the lock name, for some encryption.
          * If this is not set, some function won't work!!!
          *
-         * @param deviceName the lock's device name
+         * @param lockName the lock's lock name
          */
-        fun setDeviceName(deviceName: String): Builder {
-            this.deviceName = deviceName
+        fun setLockName(lockName: String): Builder {
+            this.lockName = lockName
             return this
         }
 
@@ -92,7 +92,7 @@ class PhonekeyBLELock private constructor(
         fun build(): PhonekeyBLELock {
             val phonekeyBLELock = PhonekeyBLELock(
                 phonekeyBLEHelper,
-                deviceName,
+                lockName,
                 if (isLog != null) isLog!! else true
             )
 
@@ -114,7 +114,7 @@ class PhonekeyBLELock private constructor(
 
     /*---------------------Lock status---------------------------------------------------------------------------------------------------------------*/
     /**
-     * Check device is already activated or not
+     * Check lock is already activated or not
      * Write 0100, and will receive 0100XX
      *      XX -> 01 is activated, 00 is not
      *
@@ -195,14 +195,14 @@ class PhonekeyBLELock private constructor(
      *   @see get_nowtime
      *
      * 3. Check NFC tag's correctness, and callback on failure with status or success
-     *   @see setDevicePassword
+     *   @see setLockPassword
      *   @see ActivateListener
      *
      * @param nfcV the NFC scanned result
-     * @param newDevicePassword set your own device password for establish key, deactivate ...
+     * @param newLockPassword set your own lock password for establish key, deactivate ...
      * @param listener listen the result
      */
-    fun activate(nfcV: NfcV, newDevicePassword: String, listener: ActivateListener) {
+    fun activate(nfcV: NfcV, newLockPassword: String, listener: ActivateListener) {
         var data = "0501"
         sendDataAndReceive(data) { receivedData ->
             // 0502
@@ -218,7 +218,7 @@ class PhonekeyBLELock private constructor(
                 sendDataAndReceive(data) {
                     // 0508
 
-                    setDevicePassword(t1, ac3, counter, newDevicePassword, listener)
+                    setLockPassword(t1, ac3, counter, newLockPassword, listener)
                 }
             } catch (e: Exception) {
                 listener.onFailure(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
@@ -240,14 +240,14 @@ class PhonekeyBLELock private constructor(
      *   @see get_nowtime
      *
      * 3. Check QR code's correctness, and callback on failure with status or success
-     *   @see setDevicePassword
+     *   @see setLockPassword
      *   @see ActivateListener
      *
      * @param code this is a string that you scan from the card or you can simply try type the activation code on the card
-     * @param newDevicePassword set your own device password for establish key, deactivate ...
+     * @param newLockPassword set your own lock password for establish key, deactivate ...
      * @param listener listen the result
      */
-    fun activate(code: String, newDevicePassword: String, listener: ActivateListener) {
+    fun activate(code: String, newLockPassword: String, listener: ActivateListener) {
         if (code.length != 36) {
             if (isLog) {
                 Log.e(TAG, "QR Code is incorrect, length must be 36")
@@ -267,7 +267,7 @@ class PhonekeyBLELock private constructor(
                 sendDataAndReceive(data) {
                     // 0508
 
-                    setDevicePassword(t1, ac3, counter, newDevicePassword, listener)
+                    setLockPassword(t1, ac3, counter, newLockPassword, listener)
                 }
             }
         }
@@ -282,7 +282,7 @@ class PhonekeyBLELock private constructor(
          * @param errorTimes returns how many times entering wrong password
          * @param needToWait After 3 times incorrect, have to wait 'needToWait' minutes, then can proceed
          */
-        fun onFailure(status: DevicePasswordStatus, errorTimes: Int, needToWait: Int)
+        fun onFailure(status: LockPasswordStatus, errorTimes: Int, needToWait: Int)
         fun onSuccess()
     }
     /**
@@ -292,42 +292,42 @@ class PhonekeyBLELock private constructor(
      * 1. Write 0601 to get T1, read T1 from 0602XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
      *
-     * 2. Use T1 to encrypted the device password in specific format
+     * 2. Use T1 to encrypted the lock password in specific format
      *   @see triv.get_triv
-     *    Write 0603 with the trimmed device password, this procedure is to check password, only enter the right device password can reset the lock
+     *    Write 0603 with the trimmed lock password, this procedure is to check password, only enter the right lock password can reset the lock
      *    and will receive 0604XY with password status
-     *      X == 0 -> device password isn't correct, Y means how many times wrong password have been sent
-     *      X == 1 -> device password is correct
-     *      X == 2 -> device password is already incorrect 3 times, need to wait Y minutes
+     *      X == 0 -> lock password isn't correct, Y means how many times wrong password have been sent
+     *      X == 1 -> lock password is correct
+     *      X == 2 -> lock password is already incorrect 3 times, need to wait Y minutes
      *   @see DeactivateListener
      *
      * 3. Write 99AC to do factory reset, and will receive 99AD to confirm
      *
-     * @param devicePassword the device password set before
+     * @param lockPassword the lock password set before
      * @param listener listen the result
      */
-    fun deactivate(devicePassword: String, listener: DeactivateListener) {
+    fun deactivate(lockPassword: String, listener: DeactivateListener) {
         var data = "0601"
         sendDataAndReceive(data) { receivedData ->
             // 0602
             val t1 = receivedData.substring(4)
-            val trimmedDevicePassword = triv.get_triv(
+            val trimmedLockPassword = triv.get_triv(
                 t1,
-                devicePassword.substring(0, 12),
-                devicePassword.substring(12, 16) + t1.substring(0, 4),
+                lockPassword.substring(0, 12),
+                lockPassword.substring(12, 16) + t1.substring(0, 4),
                 "00000000000000000000"
             ).toString()
-            data = "0603$trimmedDevicePassword"
+            data = "0603$trimmedLockPassword"
             sendDataAndReceive(data) { receivedData ->
                 // 0604
                 when (receivedData.substring(4, 5)) {
                     "0" -> listener.onFailure(
-                        DevicePasswordStatus.INCORRECT, receivedData.substring(
+                        LockPasswordStatus.INCORRECT, receivedData.substring(
                             5
                         ).toInt(), -1
                     )
                     "2" -> listener.onFailure(
-                        DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(
+                        LockPasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(
                             5
                         ).toInt()
                     )
@@ -344,8 +344,8 @@ class PhonekeyBLELock private constructor(
     }
 
 
-    /*--------------------------Device password-----------------------------------------------------------------------------------------------*/
-    interface ChangeDevicePasswordListener {
+    /*--------------------------Lock password-----------------------------------------------------------------------------------------------*/
+    interface ChangeLockPasswordListener {
         /**
          * Callback when password is incorrect
          *
@@ -353,11 +353,11 @@ class PhonekeyBLELock private constructor(
          * @param errorTimes returns how many times entering wrong password
          * @param needToWait After 3 times incorrect, have to wait 'needToWait' minutes, then can proceed
          */
-        fun onFailure(status: DevicePasswordStatus, errorTimes: Int, needToWait: Int)
+        fun onFailure(status: LockPasswordStatus, errorTimes: Int, needToWait: Int)
         fun onSuccess()
     }
     /**
-     * Change device password by entering the old password
+     * Change lock password by entering the old password
      * 1. Write 0501 to get T1, which will receive with 0502XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
      *
@@ -368,17 +368,17 @@ class PhonekeyBLELock private constructor(
      *      X == "3" -> Enter wrong password 3 times, need to wait Y minutes
      *      X == "7" -> Length error, maybe is not actually meaning the length, the encryption might be wrong either.
      *      XY == "00" -> correct
-     *   @see ChangeDevicePasswordListener
+     *   @see ChangeLockPasswordListener
      *
      * 3. Encrypted new password
-     *   @see encryptDevicePassword
+     *   @see encryptLockPassword
      *    And Write 0505 with encrypted new password, and receive 0506 to check procedure is done
      *
-     * @param oldPassword original device password, set at activation
-     * @param newPassword new device password
+     * @param oldPassword original lock password, set at activation
+     * @param newPassword new lock password
      * @param listener listen the result
      * */
-    fun changeDevicePassword(oldPassword: String, newPassword: String, listener: ChangeDevicePasswordListener) {
+    fun changeLockPassword(oldPassword: String, newPassword: String, listener: ChangeLockPasswordListener) {
         if (isLog) {
             Log.i(TAG, "old: $oldPassword,  new: $newPassword")
         }
@@ -398,15 +398,15 @@ class PhonekeyBLELock private constructor(
                 // 0504
 
                 when (receivedData.substring(4, 5)) {
-                    "2" -> listener.onFailure(DevicePasswordStatus.INCORRECT, receivedData.substring(5, 6).toInt(), -1)
-                    "3" -> listener.onFailure(DevicePasswordStatus.INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
-                    "7" -> listener.onFailure(DevicePasswordStatus.LENGTH_ERROR, -1, -1)
+                    "2" -> listener.onFailure(LockPasswordStatus.INCORRECT, receivedData.substring(5, 6).toInt(), -1)
+                    "3" -> listener.onFailure(LockPasswordStatus.INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
+                    "7" -> listener.onFailure(LockPasswordStatus.LENGTH_ERROR, -1, -1)
                     else -> {
                         if (isLog) {
-                            Log.i(TAG, "Set device password: $newPassword")
+                            Log.i(TAG, "Set lock password: $newPassword")
                         }
-                        val encryptedNewPasswordArray = encryptDevicePassword(
-                            deviceName,
+                        val encryptedNewPasswordArray = encryptLockPassword(
+                            lockName,
                             t1,
                             newPassword
                         )
@@ -422,7 +422,7 @@ class PhonekeyBLELock private constructor(
     }
 
     /**
-     * Reset the device password with NFC card(not QR Code), if old password is missing
+     * Reset the lock password with NFC card(not QR Code), if old password is missing
      * Scan the NFC card first and pass it in
      * 1. Write 0501 to get T1, which will receive with 0502XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
@@ -430,14 +430,14 @@ class PhonekeyBLELock private constructor(
      * 2. Calculate ac3 and counter with T1 and NFC Tag result
      *
      * 3. Check NFC tag's correctness, and callback on failure with status or success
-     *   @see setDevicePassword
+     *   @see setLockPassword
      *   @see ActivateListener
      *
      * @param nfcV the NFC scanned result
-     * @param newPassword new device password
+     * @param newPassword new lock password
      * @param listener listen the result
      */
-    fun resetDevicePassword(nfcV: NfcV, newPassword: String, listener: ActivateListener) {
+    fun resetLockPassword(nfcV: NfcV, newPassword: String, listener: ActivateListener) {
         val data = "0501"
         sendDataAndReceive(data) { receivedData ->
             // 0502
@@ -446,7 +446,7 @@ class PhonekeyBLELock private constructor(
             val ac3 = vData[1]
             val counter = vData[2] + "01"
 
-            setDevicePassword(t1, ac3, counter, newPassword, listener)
+            setLockPassword(t1, ac3, counter, newPassword, listener)
         }
     }
 
@@ -460,7 +460,7 @@ class PhonekeyBLELock private constructor(
      *   @see ActivateListener
      *
      * 2. Encrypted new password
-     *   @see encryptDevicePassword
+     *   @see encryptLockPassword
      *    And Write 0505 with encrypted new password, and receive 0506 to check procedure is done
      *
      * @param T1 get from lock
@@ -468,7 +468,7 @@ class PhonekeyBLELock private constructor(
      * @param counter calculate from NFC tag or QR Code with T1, see the caller
      * @param listener listen the result
      */
-    private fun setDevicePassword(T1: String, ac3: String, counter: String, newPassword: String ,listener: ActivateListener) {
+    private fun setLockPassword(T1: String, ac3: String, counter: String, newPassword: String ,listener: ActivateListener) {
         var data = "0503$ac3$counter"
         sendDataAndReceive(data) { receivedData ->
             // 0504
@@ -479,8 +479,8 @@ class PhonekeyBLELock private constructor(
                 "7" -> listener.onFailure(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
                 else -> {
                     Log.i(TAG, "Set new password: $newPassword")
-                    val encryptedNewPasswordArray = encryptDevicePassword(
-                        deviceName,
+                    val encryptedNewPasswordArray = encryptLockPassword(
+                        lockName,
                         T1,
                         newPassword
                     )
@@ -494,7 +494,7 @@ class PhonekeyBLELock private constructor(
         }
     }
 
-    interface CheckDevicePasswordListener {
+    interface CheckLockPasswordListener {
         /**
          * Be called when get the result
          *
@@ -502,22 +502,22 @@ class PhonekeyBLELock private constructor(
          * @param errorTimes returns how many times entering wrong password
          * @param needToWait After 3 times incorrect, have to wait 'needToWait' minutes, then can proceed
          */
-        fun onResult(status: DevicePasswordStatus, errorTimes: Int, needToWait: Int)
+        fun onResult(status: LockPasswordStatus, errorTimes: Int, needToWait: Int)
     }
     /**
-     * Check device password
-     * @see checkDevicePassword
+     * Check lock password
+     * @see checkLockPassword
      *
-     * @param password the device password
+     * @param password the lock password
      * @param listener listen the result
-     * @see CheckDevicePasswordListener
+     * @see CheckLockPasswordListener
      * */
-    fun checkDevicePassword(password: String, listener: CheckDevicePasswordListener) {
-        checkDevicePassword(password) { receivedData ->
+    fun checkLockPassword(password: String, listener: CheckLockPasswordListener) {
+        checkLockPassword(password) { receivedData ->
             when (receivedData.substring(4, 5)) {
-                "0" -> listener.onResult(DevicePasswordStatus.INCORRECT, receivedData.substring(5).toInt(), -1)
-                "1" -> listener.onResult(DevicePasswordStatus.CORRECT, -1, -1)
-                "2" -> listener.onResult(DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
+                "0" -> listener.onResult(LockPasswordStatus.INCORRECT, receivedData.substring(5).toInt(), -1)
+                "1" -> listener.onResult(LockPasswordStatus.CORRECT, -1, -1)
+                "2" -> listener.onResult(LockPasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
             }
         }
     }
@@ -526,17 +526,17 @@ class PhonekeyBLELock private constructor(
      * 1. Write 0601 to get T1, read T1 from 0602XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
      *
-     * 2. Use T1 to encrypted the device password in specific format
+     * 2. Use T1 to encrypted the lock password in specific format
      *   @see triv.get_triv
-     *    Write 0603 with the trimmed device password to check password and will receive 0604XY with password's status
-     *      X == 0 -> device password isn't correct, Y means how many times wrong password have been sent
-     *      X == 1 -> device password is correct
-     *      X == 2 -> device password is already incorrect 3 times, need to wait Y minutes
+     *    Write 0603 with the trimmed lock password to check password and will receive 0604XY with password's status
+     *      X == 0 -> lock password isn't correct, Y means how many times wrong password have been sent
+     *      X == 1 -> lock password is correct
+     *      X == 2 -> lock password is already incorrect 3 times, need to wait Y minutes
      *
      * @param password password want to check
      * @param listener listen the result
      */
-    private fun checkDevicePassword(password: String, listener: (String) -> Unit) {
+    private fun checkLockPassword(password: String, listener: (String) -> Unit) {
         var data = "0601"
         sendDataAndReceive(data) { receivedData ->
             // 0602
@@ -565,7 +565,7 @@ class PhonekeyBLELock private constructor(
          * @param errorTimes returns how many times entering wrong password
          * @param needToWait After 3 times incorrect, have to wait 'needToWait' minutes, then can proceed
          */
-        fun onFailure(status: DevicePasswordStatus, errorTimes: Int, needToWait: Int)
+        fun onFailure(status: LockPasswordStatus, errorTimes: Int, needToWait: Int)
 
         /**
          * After successfully established key
@@ -581,8 +581,8 @@ class PhonekeyBLELock private constructor(
      * Opening lock and set keypad password will need this AC3
      * If KeyA and KeyB are properly stored, this function only need to be execute once, until the AC3 is not working
      *
-     * 1. Enter the correct device password first, and do check procedure
-     *   @see checkDevicePassword
+     * 1. Enter the correct lock password first, and do check procedure
+     *   @see checkLockPassword
      *   @see EstablishKeyListener
      *
      * 2. Write 0101 and receive the type of lock in 0102XXYY
@@ -597,14 +597,14 @@ class PhonekeyBLELock private constructor(
      * After receive KeyB, KeyA and KeyB will return through listener's onSuccess function
      * KeyA and KeyB need to saved properly for calculating AC3
      *
-     * @param devicePassword device password set at activation
+     * @param lockPassword lock password set at activation
      * @param listener listen the result
      */
-    fun establishKey(devicePassword: String, listener: EstablishKeyListener) {
-        checkDevicePassword(devicePassword) { receivedData ->
+    fun establishKey(lockPassword: String, listener: EstablishKeyListener) {
+        checkLockPassword(lockPassword) { receivedData ->
             when (receivedData.substring(4, 5)) {
-                "0" -> listener.onFailure(DevicePasswordStatus.INCORRECT, receivedData.substring(5).toInt(), -1)
-                "2" -> listener.onFailure(DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
+                "0" -> listener.onFailure(LockPasswordStatus.INCORRECT, receivedData.substring(5).toInt(), -1)
+                "2" -> listener.onFailure(LockPasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
                 else -> {
                     var data = "0101"
                     sendDataAndReceive(data) {
@@ -869,7 +869,7 @@ class PhonekeyBLELock private constructor(
 
     private fun checkBLEAndLog(string: String) {
         check(phonekeyBLEHelper != null) { "Phonekey BLE helper doesn't set" }
-        check(deviceName != null ) { "Device name doesn't set" }
+        check(lockName != null ) { "Lock name doesn't set" }
         if (isLog) {
             Log.i(TAG, "write: (${string.substring(0, 4)})${string.substring(4)}")
         }

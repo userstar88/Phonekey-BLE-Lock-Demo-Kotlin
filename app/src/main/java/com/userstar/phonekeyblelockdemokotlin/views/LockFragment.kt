@@ -27,7 +27,7 @@ import com.squareup.okhttp.Response
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelock.PhonekeyBLELock
 import com.userstar.phonekeyblelockdemokotlin.R
-import kotlinx.android.synthetic.main.device_fragment.*
+import kotlinx.android.synthetic.main.lock_fragment.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
@@ -41,7 +41,7 @@ import java.io.IOException
 import java.util.*
 
 @SuppressLint("SetTextI18n")
-class DeviceFragment : Fragment() {
+class LockFragment : Fragment() {
 
     override fun onStart() {
         super.onStart()
@@ -52,11 +52,11 @@ class DeviceFragment : Fragment() {
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        return inflater.inflate(R.layout.device_fragment, container, false)
+        return inflater.inflate(R.layout.lock_fragment, container, false)
     }
 
     private lateinit var scanResult: ScanResult
-    private lateinit var deviceName: String
+    private lateinit var lockName: String
     private lateinit var phonekeyBLELock: PhonekeyBLELock
     private var alertDialog: AlertDialog? = null
     private var isActive = false
@@ -65,8 +65,8 @@ class DeviceFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
 
         scanResult = requireArguments()["scanResult"] as ScanResult
-        deviceName = scanResult.device.name
-        device_name_TextView.text = "Device Name: $deviceName"
+        lockName = scanResult.device.name
+        lock_name_TextView.text = "Lock Name: $lockName"
 
         /**
          * Init your bluetooth class with PhonykeyBLELock first
@@ -76,7 +76,7 @@ class DeviceFragment : Fragment() {
          * */
         phonekeyBLELock = PhonekeyBLELock.Builder()
             .enableLog(true)
-            .setDeviceName(deviceName)
+            .setLockName(lockName)
             .setBLEHelper(BLEHelper.getInstance())
             .setOnReadyListener {
                 Timber.i("Lock type: ${phonekeyBLELock.getLockType()}")
@@ -127,25 +127,25 @@ class DeviceFragment : Fragment() {
             }
         }
 
-        reset_device_password_Button.setOnClickListener {
+        reset_lock_password_Button.setOnClickListener {
             if (isActive) {
-                changeDevicePassword()
+                changeLockPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
         }
 
-        reset_device_password_by_nfc_Button.setOnClickListener {
+        reset_lock_password_by_nfc_Button.setOnClickListener {
             if (isActive) {
-                resetDevicePasswordByNfc()
+                resetLockPasswordByNfc()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
         }
 
-        check_device_password_Button.setOnClickListener {
+        check_lock_password_Button.setOnClickListener {
             if (isActive) {
-                checkDevicePassword()
+                checkLockPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
@@ -230,11 +230,11 @@ class DeviceFragment : Fragment() {
                     tagLiveData = null
                     alertDialog!!.dismiss()
 
-                    enterPasswordAlertDialog("Set your device password",
-                        PasswordType.DEVICE
-                    ) { devicePassword ->
-                        Timber.i("Set device password: $devicePassword")
-                        phonekeyBLELock.activate(nfcV, devicePassword, object : PhonekeyBLELock.ActivateListener {
+                    enterPasswordAlertDialog("Set your lock password",
+                        PasswordType.LOCK
+                    ) { lockPassword ->
+                        Timber.i("Set lock password: $lockPassword")
+                        phonekeyBLELock.activate(nfcV, lockPassword, object : PhonekeyBLELock.ActivateListener {
                             override fun onFailure(
                                 status: PhonekeyBLELock.ActivationCodeStatus,
                                 errorTimes: Int,
@@ -249,6 +249,7 @@ class DeviceFragment : Fragment() {
 
                             override fun onSuccess() {
                                 makeToastAndLog("Activate successfully!", 1)
+                                updateLockStatus()
                             }
                         })
                     }
@@ -256,7 +257,7 @@ class DeviceFragment : Fragment() {
             }
 
         } else {
-            makeToastAndLog("This device does not support NFC", 0)
+            makeToastAndLog("This lock does not support NFC", 0)
         }
     }
 
@@ -279,11 +280,11 @@ class DeviceFragment : Fragment() {
                     qrCodeLiveData!!.removeObservers(viewLifecycleOwner)
                     qrCodeLiveData = null
 
-                    enterPasswordAlertDialog("Set your device password",
-                        PasswordType.DEVICE
-                    ) { devicePassword ->
-                        Timber.i("Set device password: $devicePassword")
-                        phonekeyBLELock.activate(code, devicePassword, object : PhonekeyBLELock.ActivateListener {
+                    enterPasswordAlertDialog("Set your lock password",
+                        PasswordType.LOCK
+                    ) { lockPassword ->
+                        Timber.i("Set lock password: $lockPassword")
+                        phonekeyBLELock.activate(code, lockPassword, object : PhonekeyBLELock.ActivateListener {
                             override fun onFailure(
                                 status: PhonekeyBLELock.ActivationCodeStatus,
                                 errorTimes: Int,
@@ -298,6 +299,7 @@ class DeviceFragment : Fragment() {
 
                             override fun onSuccess() {
                                 makeToastAndLog("Activate successfully!", 1)
+                                updateLockStatus()
                             }
                         })
                     }
@@ -325,18 +327,18 @@ class DeviceFragment : Fragment() {
             .setMessage("This action will reset the lock and clear lock's memory")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Confirm") { _, _ ->
-                enterPasswordAlertDialog("Device password", PasswordType.DEVICE) { devicePassword ->
+                enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
 
-                    phonekeyBLELock.deactivate(devicePassword, object : PhonekeyBLELock.DeactivateListener {
+                    phonekeyBLELock.deactivate(lockPassword, object : PhonekeyBLELock.DeactivateListener {
                         override fun onFailure(
-                            status: PhonekeyBLELock.DevicePasswordStatus,
+                            status: PhonekeyBLELock.LockPasswordStatus,
                             errorTimes: Int,
                             needToWait: Int
                         ) {
                             when (status) {
-                                PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
-                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password ERROR $errorTimes times.", 0)
-                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password ERROR 3 times, need to wait $needToWait minutes.", 0)
+                                PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
+                                PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password ERROR $errorTimes times.", 0)
+                                PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password ERROR 3 times, need to wait $needToWait minutes.", 0)
                             }
                         }
 
@@ -350,39 +352,39 @@ class DeviceFragment : Fragment() {
             .show()
     }
 
-    /*-------------------------Device Password------------------------------------------------------------*/
-    private fun changeDevicePassword() {
+    /*-------------------------Lock Password------------------------------------------------------------*/
+    private fun changeLockPassword() {
         if (!isActive) {
             makeToastAndLog("Activated Lock first!!!", 0)
             return
         }
 
-        enterPasswordAlertDialog("Enter old device password",
-            PasswordType.DEVICE
-        ) { oldDevicePassword ->
-            Timber.i("Old device password: $oldDevicePassword")
-            enterPasswordAlertDialog("Enter new device password",
-                PasswordType.DEVICE
-            ) { newDevicePassword ->
-                Timber.i("New device password: $newDevicePassword")
-                phonekeyBLELock.changeDevicePassword(
-                    oldDevicePassword,
-                    newDevicePassword,
-                    object : PhonekeyBLELock.ChangeDevicePasswordListener {
+        enterPasswordAlertDialog("Enter old lock password",
+            PasswordType.LOCK
+        ) { oldLockPassword ->
+            Timber.i("Old lock password: $oldLockPassword")
+            enterPasswordAlertDialog("Enter new lock password",
+                PasswordType.LOCK
+            ) { newLockPassword ->
+                Timber.i("New lock password: $newLockPassword")
+                phonekeyBLELock.changeLockPassword(
+                    oldLockPassword,
+                    newLockPassword,
+                    object : PhonekeyBLELock.ChangeLockPasswordListener {
                         override fun onFailure(
-                            status: PhonekeyBLELock.DevicePasswordStatus,
+                            status: PhonekeyBLELock.LockPasswordStatus,
                             errorTimes: Int,
                             needToWait: Int
                         ) {
                             when (status) {
-                                PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
-                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password INCORRECT $errorTimes times", 0)
-                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password INCORRECT 3 times, need to wait $needToWait minutes", 0)
+                                PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
+                                PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password INCORRECT $errorTimes times", 0)
+                                PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password INCORRECT 3 times, need to wait $needToWait minutes", 0)
                             }
                         }
 
                         override fun onSuccess() {
-                            makeToastAndLog("Set new password $newDevicePassword SUCCESSFULLY", 1)
+                            makeToastAndLog("Set new password $newLockPassword SUCCESSFULLY", 1)
                         }
                     }
                 )
@@ -390,15 +392,15 @@ class DeviceFragment : Fragment() {
         }
     }
 
-    private fun resetDevicePasswordByNfc() {
+    private fun resetLockPasswordByNfc() {
         if (!isActive) {
             makeToastAndLog("Activated Lock first!!!", 0)
             return
         }
 
         if (NfcAdapter.getDefaultAdapter(requireContext()) != null) {
-            enterPasswordAlertDialog("New device password", PasswordType.DEVICE) { newDevicePassword ->
-                Timber.i("New device password: $newDevicePassword")
+            enterPasswordAlertDialog("New lock password", PasswordType.LOCK) { newLockPassword ->
+                Timber.i("New lock password: $newLockPassword")
                 alertDialog = AlertDialog.Builder(requireContext())
                     .setMessage("Scan NFC Tag")
                     .setOnCancelListener {
@@ -412,9 +414,9 @@ class DeviceFragment : Fragment() {
                         tagLiveData = null
                         alertDialog!!.dismiss()
 
-                        phonekeyBLELock.resetDevicePassword(
+                        phonekeyBLELock.resetLockPassword(
                             nfcV,
-                            newDevicePassword,
+                            newLockPassword,
                             object : PhonekeyBLELock.ActivateListener {
                                 override fun onFailure(
                                     status: PhonekeyBLELock.ActivationCodeStatus,
@@ -429,7 +431,7 @@ class DeviceFragment : Fragment() {
                                 }
 
                                 override fun onSuccess() {
-                                    makeToastAndLog("Reset device password SUCCESSFULLY.", 1)
+                                    makeToastAndLog("Reset lock password SUCCESSFULLY.", 1)
                                 }
                             }
                         )
@@ -437,23 +439,23 @@ class DeviceFragment : Fragment() {
                 }
             }
         } else {
-            makeToastAndLog("This device does not support NFC", 0)
+            makeToastAndLog("This lock does not support NFC", 0)
         }
     }
 
-    private fun checkDevicePassword() {
-        Timber.i("Check device password")
-        enterPasswordAlertDialog("Device password", PasswordType.DEVICE) { devicePassword ->
-            phonekeyBLELock.checkDevicePassword(devicePassword, object : PhonekeyBLELock.CheckDevicePasswordListener {
+    private fun checkLockPassword() {
+        Timber.i("Check lock password")
+        enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
+            phonekeyBLELock.checkLockPassword(lockPassword, object : PhonekeyBLELock.CheckLockPasswordListener {
                 override fun onResult(
-                    status: PhonekeyBLELock.DevicePasswordStatus,
+                    status: PhonekeyBLELock.LockPasswordStatus,
                     errorTimes: Int,
                     needToWait: Int
                 ) {
                     when (status) {
-                        PhonekeyBLELock.DevicePasswordStatus.CORRECT -> makeToastAndLog("Device password is correct!!!", 0)
-                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password INCORRECT $errorTimes times", 0)
-                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password INCORRECT 3 times, need to wait $needToWait minutes", 0)
+                        PhonekeyBLELock.LockPasswordStatus.CORRECT -> makeToastAndLog("Lock password is correct!!!", 0)
+                        PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password INCORRECT $errorTimes times", 0)
+                        PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password INCORRECT 3 times, need to wait $needToWait minutes", 0)
                     }
                 }
             })
@@ -466,17 +468,17 @@ class DeviceFragment : Fragment() {
      * Properly storing the KeyA and KeyB, use this two value to calculate AC3 and do a opening or set keypad password
      */
     private fun establishKey() {
-        enterPasswordAlertDialog("Device password", PasswordType.DEVICE) { devicePassword ->
-            phonekeyBLELock.establishKey(devicePassword, object : PhonekeyBLELock.EstablishKeyListener {
+        enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
+            phonekeyBLELock.establishKey(lockPassword, object : PhonekeyBLELock.EstablishKeyListener {
                 override fun onFailure(
-                    status: PhonekeyBLELock.DevicePasswordStatus,
+                    status: PhonekeyBLELock.LockPasswordStatus,
                     errorTimes: Int,
                     needToWait: Int
                 ) {
                     when (status) {
-                        PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
-                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password ERROR $errorTimes times.", 0)
-                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password ERROR 3 times, need to wait $needToWait minutes.", 0)
+                        PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
+                        PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password ERROR $errorTimes times.", 0)
+                        PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password ERROR 3 times, need to wait $needToWait minutes.", 0)
                     }
                 }
 
@@ -486,7 +488,7 @@ class DeviceFragment : Fragment() {
                     Timber.i("KeyA: $keyA")
                     Timber.i("KeyB: $keyB")
                     OkHttpClient().newCall(Request.Builder()
-                        .url("http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&a=$keyA&b=$keyB")
+                        .url("http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&a=$keyA&b=$keyB")
                         .build())
                         .enqueue(object : Callback {
                             override fun onFailure(request: Request?, e: IOException?) {
@@ -518,7 +520,7 @@ class DeviceFragment : Fragment() {
         if (canOpen) {
             phonekeyBLELock.getT1 { T1 ->
                 val response = OkHttpClient().newCall(Request.Builder()
-                    .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&t1=$T1")
+                    .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&t1=$T1")
                     .build())
                     .execute()
                 Timber.i("$response")
@@ -541,12 +543,12 @@ class DeviceFragment : Fragment() {
                                 Timber.i("new keyB: $newKeyB")
                                 updateLockKeyB(newKeyB, pk)
                                 canOpen = false
-                                this@DeviceFragment.secs = secs
+                                this@LockFragment.secs = secs
                                 val timer = Timer()
                                 timer.schedule(object : TimerTask() {
                                     override fun run() {
-                                        if (this@DeviceFragment.secs > 0) {
-                                            this@DeviceFragment.secs -= 1
+                                        if (this@LockFragment.secs > 0) {
+                                            this@LockFragment.secs -= 1
                                         } else {
                                             canOpen = true
                                             timer.cancel()
@@ -569,7 +571,7 @@ class DeviceFragment : Fragment() {
 
     private fun updateLockKeyB(keyB: String, pk: String) {
         val response = OkHttpClient().newCall(Request.Builder()
-            .url("http://210.65.11.172:8080/demo/Basketball/Netkey_updatakeyb.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&b=$keyB&pk=$pk")
+            .url("http://210.65.11.172:8080/demo/Basketball/Netkey_updatakeyb.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&b=$keyB&pk=$pk")
             .build())
             .execute()
         Timber.i("$response")
@@ -612,7 +614,7 @@ class DeviceFragment : Fragment() {
         Timber.i("Set keypad password.")
         GlobalScope.launch(Dispatchers.IO) {
             val response = OkHttpClient().newCall(Request.Builder()
-                .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${deviceName.substring(3)}&t1=00000000000000000000")
+                .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&t1=00000000000000000000")
                 .build())
                 .execute()
             Timber.i("$response")
@@ -666,7 +668,7 @@ class DeviceFragment : Fragment() {
     }
 
     enum class PasswordType {
-        DEVICE, KEYPAD
+        LOCK, KEYPAD
     }
     private fun enterPasswordAlertDialog(title: String, type: PasswordType, callback: (String) -> Unit) {
         GlobalScope.launch(Dispatchers.Main) {
@@ -677,7 +679,7 @@ class DeviceFragment : Fragment() {
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Confirm") { _, _ ->
                     when (type) {
-                        PasswordType.DEVICE -> {
+                        PasswordType.LOCK -> {
                             if (editText.text.toString().length != 16) {
                                 AlertDialog.Builder(requireContext())
                                     .setMessage("Length must equal 16")
@@ -704,7 +706,7 @@ class DeviceFragment : Fragment() {
         }
     }
 
-    private val DEFAULT_DEVICE_PASSWORD = "1111111111111111"
+    private val DEFAULT_LOCK_PASSWORD = "1111111111111111"
     private val DEFAULT_KEYPAD_PASSWORD = "666666"
     private fun getAlertAlertDialogEditView(editText: EditText, type: PasswordType): View {
         val linearLayout = LinearLayout(requireContext())
@@ -724,8 +726,8 @@ class DeviceFragment : Fragment() {
         layoutParams.marginEnd = 30
         editText.layoutParams = layoutParams
         editText.gravity = Gravity.CENTER_HORIZONTAL
-        if (type == PasswordType.DEVICE) {
-            editText.setText(DEFAULT_DEVICE_PASSWORD)
+        if (type == PasswordType.LOCK) {
+            editText.setText(DEFAULT_LOCK_PASSWORD)
         } else {
             editText.setText(DEFAULT_KEYPAD_PASSWORD)
         }
