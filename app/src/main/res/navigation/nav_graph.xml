@@ -4,24 +4,24 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/nav_graph"
-    app:startDestination="@id/deviceListFragment">
+    app:startDestination="@id/lockListFragment">
 
     <fragment
-        android:id="@+id/deviceListFragment"
-        android:name="com.userstar.phonekeyblelockdemokotlin.views.DeviceListFragment"
-        android:label="device_list_fragment"
-        tools:layout="@layout/device_list_fragment" >
+        android:id="@+id/lockListFragment"
+        android:name="com.userstar.phonekeyblelockdemokotlin.views.LockListFragment"
+        android:label="lock_list_fragment"
+        tools:layout="@layout/lock_list_fragment" >
         <action
-            android:id="@+id/action_deviceListFragment_to_deviceFragment"
-            app:destination="@id/deviceFragment">
+            android:id="@+id/action_lockListFragment_to_lockFragment"
+            app:destination="@id/lockFragment">
             <argument
                 android:name="scanResult"
                 app:argType="android.bluetooth.le.ScanResult" />
         </action>
     </fragment>
     <fragment
-        android:id="@+id/deviceFragment"
-        android:name="com.userstar.phonekeyblelockdemokotlin.views.DeviceFragment"
-        android:label="device_fragment"
-        tools:layout="@layout/device_fragment" />
+        android:id="@+id/lockFragment"
+        android:name="com.userstar.phonekeyblelockdemokotlin.views.LockFragment"
+        android:label="lock_fragment"
+        tools:layout="@layout/lock_fragment" />
 </navigation>

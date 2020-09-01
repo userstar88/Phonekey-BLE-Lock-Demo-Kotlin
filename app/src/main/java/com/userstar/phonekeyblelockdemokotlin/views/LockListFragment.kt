@@ -15,32 +15,32 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelockdemokotlin.R
-import kotlinx.android.synthetic.main.device_list_fragment.*
+import kotlinx.android.synthetic.main.lock_list_fragment.*
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.concurrent.CopyOnWriteArrayList
 
-class DeviceListFragment : Fragment() {
+class LockListFragment : Fragment() {
 
-    private lateinit var deviceListRecyclerViewAdapter: DeviceListRecyclerViewAdapter
-    private lateinit var deviceListRecyclerView: RecyclerView
+    private lateinit var lockListRecyclerViewAdapter: LockListRecyclerViewAdapter
+    private lateinit var lockListRecyclerView: RecyclerView
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View? {
-        val view = inflater.inflate(R.layout.device_list_fragment, container, false)
+        val view = inflater.inflate(R.layout.lock_list_fragment, container, false)
 
-        deviceListRecyclerView = view.findViewById(R.id.device_list_recyclerView)
-        deviceListRecyclerView.layoutManager = LinearLayoutManager(context)
-        deviceListRecyclerView.addItemDecoration(
+        lockListRecyclerView = view.findViewById(R.id.lock_list_recyclerView)
+        lockListRecyclerView.layoutManager = LinearLayoutManager(context)
+        lockListRecyclerView.addItemDecoration(
             DividerItemDecoration(
                 context,
                 LinearLayoutManager.HORIZONTAL
             )
         )
 
-        deviceListRecyclerViewAdapter = DeviceListRecyclerViewAdapter()
-        deviceListRecyclerView.adapter = deviceListRecyclerViewAdapter
+        lockListRecyclerViewAdapter = LockListRecyclerViewAdapter()
+        lockListRecyclerView.adapter = lockListRecyclerViewAdapter
 
         return view
     }
@@ -48,8 +48,8 @@ class DeviceListFragment : Fragment() {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        deviceListRecyclerViewAdapter.scanResultList.clear()
-        deviceListRecyclerViewAdapter.notifyDataSetChanged()
+        lockListRecyclerViewAdapter.scanResultList.clear()
+        lockListRecyclerViewAdapter.notifyDataSetChanged()
 
         auto_connect_Button.setOnClickListener {
             autoConnect("BKBFMLNAFBI")
@@ -67,16 +67,16 @@ class DeviceListFragment : Fragment() {
                     if (result != null && result.device.name!=null) {
                         Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
                         var isNewDevice = true
-                        for (position in 0 until deviceListRecyclerViewAdapter.scanResultList.size) {
-                            if (deviceListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                deviceListRecyclerViewAdapter.updateRssi(position, result)
+                        for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
+                            if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                lockListRecyclerViewAdapter.updateRssi(position, result)
                                 isNewDevice = false
                                 break
                             }
                         }
                         if (isNewDevice) {
-                            // Add new devices
-                            deviceListRecyclerViewAdapter.updateList(result)
+                            // Add new locks
+                            lockListRecyclerViewAdapter.updateList(result)
                         }
                     }
                 }
@@ -91,14 +91,14 @@ class DeviceListFragment : Fragment() {
         isNotConnected = true
     }
 
-    inner class DeviceListRecyclerViewAdapter : RecyclerView.Adapter<DeviceListRecyclerViewAdapter.ViewHolder>() {
+    inner class LockListRecyclerViewAdapter : RecyclerView.Adapter<LockListRecyclerViewAdapter.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
-            ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.device_list_recycler_view_holder, parent, false))
+            ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.lock_list_recycler_view_holder, parent, false))
 
         var scanResultList = CopyOnWriteArrayList<ScanResult>()
         fun updateList(result: ScanResult) {
-            Timber.i("add device ${result.device.name}")
+            Timber.i("add lock ${result.device.name}")
             requireActivity().runOnUiThread {
                 scanResultList.add(result)
                 notifyDataSetChanged()
@@ -116,18 +116,18 @@ class DeviceListFragment : Fragment() {
         override fun getItemCount() = scanResultList.size
 
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
-            holder.deviceNameTextView.text = scanResultList[position].device.name
-            holder.deviceMacTextView.text = scanResultList[position].device.address
-            holder.deviceRSSITextView.text = scanResultList[position].rssi.toString()
+            holder.lockNameTextView.text = scanResultList[position].device.name
+            holder.lockMacTextView.text = scanResultList[position].device.address
+            holder.lockRSSITextView.text = scanResultList[position].rssi.toString()
             holder.itemView.setOnClickListener {
                 connect(scanResultList[position])
             }
         }
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val deviceNameTextView: TextView = view.findViewById(R.id.device_name_textView)
-            val deviceMacTextView: TextView = view.findViewById(R.id.device_mac_textView)
-            val deviceRSSITextView: TextView = view.findViewById(R.id.device_rssi_textView)
+            val lockNameTextView: TextView = view.findViewById(R.id.lock_name_textView)
+            val lockMacTextView: TextView = view.findViewById(R.id.lock_mac_textView)
+            val lockRSSITextView: TextView = view.findViewById(R.id.lock_rssi_textView)
         }
     }
 
@@ -137,7 +137,7 @@ class DeviceListFragment : Fragment() {
         var isPushed = false
         val callbackConnected = {
             val destination =
-                DeviceListFragmentDirections.actionDeviceListFragmentToDeviceFragment(result)
+                LockListFragmentDirections.actionLockListFragmentToLockFragment(result)
             findNavController().navigate(destination)
             isPushed = true
         }
@@ -146,7 +146,7 @@ class DeviceListFragment : Fragment() {
             if (isPushed) {
                 findNavController().popBackStack()
                 requireActivity().runOnUiThread {
-                    Toast.makeText(requireActivity(), "Device disconnected", Toast.LENGTH_LONG).show()
+                    Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -159,11 +159,11 @@ class DeviceListFragment : Fragment() {
     }
 
     private var isNotConnected = true
-    private fun autoConnect(deviceName: String) {
+    private fun autoConnect(lockName: String) {
         GlobalScope.launch(Dispatchers.IO) {
             while (isNotConnected) {
-                for (result in deviceListRecyclerViewAdapter.scanResultList) {
-                    if (result.device.name == deviceName) {
+                for (result in lockListRecyclerViewAdapter.scanResultList) {
+                    if (result.device.name == lockName) {
                         connect(result)
                         isNotConnected = false
                         break

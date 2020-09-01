@@ -39,7 +39,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     ) {
         adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         if (adapter==null || !adapter!!.isEnabled) {
-            Toast.makeText(context, "DEVICE NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
+            Toast.makeText(context, "THIS DEVICE IS NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
             return
         } else {
             bluetoothLeScanner = adapter!!.bluetoothLeScanner
@@ -72,11 +72,11 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     var gattCharacteristicNotify: BluetoothGattCharacteristic? = null
     fun connectBLE(
         context: Context,
-        device: BluetoothDevice,
+        lock: BluetoothDevice,
         connectedCallback: ()->Unit,
         disconnectedCallback: ()->Unit
     ) {
-        bluetoothGatt = device.connectGatt(context, false, object : BluetoothGattCallback() {
+        bluetoothGatt = lock.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
                 status: Int,
@@ -91,7 +91,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
 
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         Timber.w("Disconnected from GATT server.")
-                        Timber.w("device disconnected!!!")
+                        Timber.w("Lock disconnected!!!")
                         disconnectedCallback()
                     }
                 }

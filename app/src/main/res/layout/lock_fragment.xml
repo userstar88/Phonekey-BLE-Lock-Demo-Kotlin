@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="com.userstar.phonekeyblelockdemokotlin.views.DeviceFragment">
+    tools:context="com.userstar.phonekeyblelockdemokotlin.views.LockFragment">
 
     <LinearLayout
         android:id="@+id/linearLayout"
@@ -22,11 +22,11 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
-            android:id="@+id/device_name_TextView"
+            android:id="@+id/lock_name_TextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginBottom="5dp"
-            android:text="Device Name: "
+            android:text="Lock Name: "
             android:textSize="20sp" />
 
         <TextView
@@ -117,26 +117,26 @@
             android:background="@android:color/transparent" />
 
         <Button
-            android:id="@+id/reset_device_password_Button"
+            android:id="@+id/reset_lock_password_Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="RESET DEVICE PASSWORD"
+            android:text="RESET LOCK PASSWORD"
             android:textColor="@android:color/holo_blue_light"
             android:background="@android:color/transparent" />
 
         <Button
-            android:id="@+id/reset_device_password_by_nfc_Button"
+            android:id="@+id/reset_lock_password_by_nfc_Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="RESET DEVICE PASSWORD BY NFC"
+            android:text="RESET LOCK PASSWORD BY NFC"
             android:textColor="@android:color/holo_blue_light"
             android:background="@android:color/transparent" />
 
         <Button
-            android:id="@+id/check_device_password_Button"
+            android:id="@+id/check_lock_password_Button"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="CHECK DEVICE PASSWORD"
+            android:text="CHECK LOCK PASSWORD"
             android:textColor="@android:color/holo_blue_light"
             android:background="@android:color/transparent" />
 

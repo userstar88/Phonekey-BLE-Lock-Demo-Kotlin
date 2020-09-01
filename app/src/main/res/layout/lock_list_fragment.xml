@@ -4,7 +4,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    tools:context="com.userstar.phonekeyblelockdemokotlin.views.DeviceListFragment">
+    tools:context="com.userstar.phonekeyblelockdemokotlin.views.LockListFragment">
 
 
 
@@ -19,7 +19,7 @@
         app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/device_list_recyclerView"
+        android:id="@+id/lock_list_recyclerView"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_marginTop="50dp"
