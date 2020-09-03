@@ -7,156 +7,176 @@
     android:layout_height="match_parent"
     tools:context="com.userstar.phonekeyblelockdemokotlin.views.LockFragment">
 
-    <LinearLayout
-        android:id="@+id/linearLayout"
+    <ScrollView
+        android:id="@+id/scrollView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:gravity="center"
-        android:orientation="vertical"
         android:padding="10dp"
         android:layout_marginStart="30dp"
         android:layout_marginEnd="30dp"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHeight_percent="0.3"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintTop_toTopOf="parent" >
 
-        <TextView
-            android:id="@+id/lock_name_TextView"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp"
-            android:text="Lock Name: "
-            android:textSize="20sp" />
+            android:gravity="center"
+            android:orientation="vertical">
 
-        <TextView
-            android:id="@+id/active_status_TextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp"
-            android:text="isActive: "
-            android:textSize="20sp" />
+            <TextView
+                android:id="@+id/lock_name_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="Lock Name: "
+                android:textSize="20sp" />
 
-        <TextView
-            android:id="@+id/battery_TextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp"
-            android:text="Battery: "
-            android:textSize="20sp" />
+            <TextView
+                android:id="@+id/lock_type_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="Lock Type: "
+                android:textSize="20sp" />
 
-        <TextView
-            android:id="@+id/version_TextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp"
-            android:text="Version: "
-            android:textSize="20sp" />
+            <TextView
+                android:id="@+id/is_active_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="isActive: "
+                android:textSize="20sp" />
 
-        <TextView
-            android:id="@+id/open_close_status_TextView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="5dp"
-            android:text="isClosing: "
-            android:textSize="20sp" />
-    </LinearLayout>
+            <TextView
+                android:id="@+id/battery_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="Battery: "
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/version_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="Version: "
+                android:textSize="20sp" />
+
+            <TextView
+                android:id="@+id/open_close_status_TextView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="5dp"
+                android:text="isClosing: "
+                android:textSize="20sp" />
+        </LinearLayout>
+
+    </ScrollView>
 
     <Button
         android:id="@+id/update_button"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
+        android:padding="20dp"
+        android:background="@android:color/transparent"
         android:text="UPDATE STATUS"
         android:textColor="@android:color/holo_blue_light"
-        android:background="@android:color/transparent"
-        app:layout_constraintBottom_toBottomOf="@+id/linearLayout"
-        app:layout_constraintEnd_toEndOf="@+id/linearLayout" />
+        app:layout_constraintBottom_toBottomOf="@+id/scrollView"
+        app:layout_constraintEnd_toEndOf="@+id/scrollView" />
 
-    <LinearLayout
+    <ScrollView
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:padding="5dp"
-        android:orientation="vertical"
-        android:gravity="center_horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/linearLayout">
+        app:layout_constraintTop_toBottomOf="@+id/scrollView" >
 
-        <Button
-            android:id="@+id/activate_Button"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Activate"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent"/>
+            android:padding="5dp"
+            android:orientation="vertical"
+            android:gravity="center_horizontal">
 
-        <Button
-            android:id="@+id/deactivate_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Deactivate"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent"/>
+            <Button
+                android:id="@+id/activate_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Activate"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent"/>
 
-        <Button
-            android:id="@+id/establish_key_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Establish Key"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/deactivate_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Deactivate"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent"/>
 
-        <Button
-            android:id="@+id/open_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="OPEN"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/establish_key_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Establish Key"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-        <Button
-            android:id="@+id/reset_lock_password_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="RESET LOCK PASSWORD"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/open_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OPEN"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-        <Button
-            android:id="@+id/reset_lock_password_by_nfc_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="RESET LOCK PASSWORD BY NFC"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/reset_lock_password_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RESET LOCK PASSWORD"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-        <Button
-            android:id="@+id/check_lock_password_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="CHECK LOCK PASSWORD"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/reset_lock_password_by_nfc_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="RESET LOCK PASSWORD BY NFC"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-        <Button
-            android:id="@+id/set_keypad_password_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="SET KEYPAD PASSWORD"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/check_lock_password_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CHECK LOCK PASSWORD"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-        <Button
-            android:id="@+id/remove_keypad_password_Button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="REMOVE KEYPAD PASSWORD"
-            android:textColor="@android:color/holo_blue_light"
-            android:background="@android:color/transparent" />
+            <Button
+                android:id="@+id/set_keypad_password_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SET KEYPAD PASSWORD"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
 
-    </LinearLayout>
+            <Button
+                android:id="@+id/remove_keypad_password_Button"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="REMOVE KEYPAD PASSWORD"
+                android:textColor="@android:color/holo_blue_light"
+                android:background="@android:color/transparent" />
+
+        </LinearLayout>
+
+    </ScrollView>
 
     <com.journeyapps.barcodescanner.BarcodeView
         android:id="@+id/zxing_BarcodeView"

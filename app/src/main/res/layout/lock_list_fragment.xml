@@ -6,14 +6,12 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     tools:context="com.userstar.phonekeyblelockdemokotlin.views.LockListFragment">
 
-
-
     <Button
-        android:id="@+id/auto_connect_Button"
+        android:id="@+id/start_scan_Button"
         android:layout_width="150dp"
         android:layout_height="50dp"
         android:layout_marginTop="50dp"
-        android:text="Auto connect"
+        android:text="Start scan"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
@@ -24,6 +22,6 @@
         android:layout_height="0dp"
         android:layout_marginTop="50dp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/auto_connect_Button" />
+        app:layout_constraintTop_toBottomOf="@+id/start_scan_Button" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

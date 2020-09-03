@@ -12,6 +12,11 @@ import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
 import timber.log.Timber
 import java.util.*
 
+/**
+ * This is a simple BLEHelper example class
+ *
+ * @see AbstractPhonekeyBLEHelper
+ * */
 class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     companion object {
@@ -146,6 +151,8 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     override fun write(data: ByteArray, callback: (BluetoothGattCharacteristic) -> Unit) {
         this.callback = callback
         gattCharacteristicWrite!!.value = data
+
+        // To prevent lock doesn't response, a little delay when sending data will be suggested
         Timer().schedule(object : TimerTask() {
             override fun run() {
                 bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)

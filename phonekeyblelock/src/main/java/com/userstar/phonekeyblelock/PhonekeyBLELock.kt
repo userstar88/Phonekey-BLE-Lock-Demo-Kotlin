@@ -38,6 +38,12 @@ class PhonekeyBLELock private constructor(
         LENGTH_ERROR
     }
 
+    enum class KeypadError {
+        AC3_ERROR,
+        NOT_SUPPORT,
+        VERIFICATION_CODE_ERROR
+    }
+
     enum class LockType {
         NO_KEYPAD,  // "1"
         KEYPAD_NO_READER,  // "2"
@@ -83,8 +89,8 @@ class PhonekeyBLELock private constructor(
             return this
         }
 
-        var listener: (() -> Unit)? = null
-        fun setOnReadyListener(listener: () -> Unit) : Builder {
+        var listener: ((isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType) -> Unit)? = null
+        fun setOnReadyListener(listener: (isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType) -> Unit) : Builder {
             this.listener = listener
             return this
         }
@@ -97,12 +103,12 @@ class PhonekeyBLELock private constructor(
             )
 
             phonekeyBLELock.getStatus(object : GetStatusListener {
-                override fun onReceive(battery: String, version: String, isOpening: Boolean, type: LockType) {
+                override fun onReceive(isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType) {
                     phonekeyBLELock.lockType = type
                     phonekeyBLELock.isReady = true
 
                     if (listener!=null) {
-                        listener!!()
+                        listener!!(isActive, battery, version, isOpening, type)
                     }
                 }
             })
@@ -113,55 +119,44 @@ class PhonekeyBLELock private constructor(
 
 
     /*---------------------Lock status---------------------------------------------------------------------------------------------------------------*/
-    /**
-     * Check lock is already activated or not
-     * Write 0100, and will receive 0100XX
-     *      XX -> 01 is activated, 00 is not
-     *
-     * @param listener listen the result
-     */
-    fun isActive(listener: (Boolean) -> Unit) {
-        val data = "0100"
-        sendDataAndReceive(data) { receivedData ->
-            // 0100
-            val isActive = receivedData.substring(4, 6) == "01"
-            listener(isActive)
-        }
-    }
-
+    var isActive = false
 
     interface GetStatusListener {
-        fun onReceive(battery: String, version: String, isOpening: Boolean, type: LockType)
+        fun onReceive(isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType)
     }
     /**
      * Get lock status from lock
-     * Write 0399, and will receive 0399XXYYZZ
-     *      XX -> battery
-     *      YY -> version
-     *      ZZ -> the lock is opening or not, 00 for opening, 01 for closing
+     * 1. Write 0100 and will receive 0100XX
+     *      XX == 00 -> is not active
+     *         == 01 -> is active
+     *
+     * 2. Write 0399, and will receive 0399AABBCCDD
+     *      AA -> battery
+     *      BB -> version
+     *      CC -> the lock is opening or not, 00 for opening, 01 for closing
+     *      DD -> lock's type
      *
      * @param listener listen the result
      * @see GetStatusListener
      */
     fun getStatus(listener: GetStatusListener) {
-        val data = "0399"
+        var data = "0100"
         sendDataAndReceive(data) { receivedData ->
-            // 0399
-            val battery = receivedData.substring(6, 8)
-            val version = receivedData.substring(10, 12)
-            val isOpening = receivedData.substring(14, 16) == "00"
-            var type = LockType.UNDEFINED
-            try {
-                type = when (receivedData.substring(19, 20)) {
-                    "1" -> LockType.NO_KEYPAD
+            // 0100
+            isActive = receivedData.substring(4, 6) == "01"
+
+            data = "0399"
+            sendDataAndReceive(data) { receivedData ->
+                // 0399
+                val battery = receivedData.substring(6, 8)
+                val version = receivedData.substring(10, 12)
+                val isOpening = receivedData.substring(14, 16) == "00"
+                val type = when (receivedData.substring(19, 20)) {
                     "2" -> LockType.KEYPAD_NO_READER
                     "3" -> LockType.KEYPAD_WITH_READER
-                    else -> type
+                    else -> LockType.NO_KEYPAD
                 }
-            } catch (e: StringIndexOutOfBoundsException) {
-                e.printStackTrace()
-            } finally {
-                listener.onReceive(battery, version, isOpening, type)
+                listener.onReceive(isActive, battery, version, isOpening, type)
             }
         }
     }
@@ -751,9 +746,9 @@ class PhonekeyBLELock private constructor(
     /*----------------Keypad---------------------------------------------------------------------------------------------------------*/
     interface SetKeypadPasswordListener {
         /**
-         * Be called when AC3 is wrong
+         * Called when AC3 is wrong or the lock doesn't support this function
          */
-        fun onAC3Error()
+        fun onFailure(error: KeypadError)
         fun onSuccess()
     }
     /**
@@ -780,7 +775,7 @@ class PhonekeyBLELock private constructor(
             sendDataAndReceive(data) { receivedData ->
                 // 0302
                 if (receivedData.substring(5, 6) == "0") {
-                    listener.onAC3Error()
+                    listener.onFailure(KeypadError.AC3_ERROR)
                 } else {
                     val encryptedPassword = AES.Encrypt2(AES.parseHexStr2Ascii(newKeyPadPassword + newKeyPadPassword + ac3), AES.parseHexStr2Ascii(ac3 + ac3.substring(0, 12)))
                     data = "0303$encryptedPassword"
@@ -789,14 +784,16 @@ class PhonekeyBLELock private constructor(
                     }
                 }
             }
+
         } else {
             Log.w(TAG, "This lock is not support Keypad")
+            listener.onFailure(KeypadError.NOT_SUPPORT)
         }
     }
 
     interface CheckKeypadStatusListener {
         /**
-         * Be called when verification code is correct return
+         * Called when verification code is correct return
          *
          * @param type lock's type
          * @param isOpening lock's status
@@ -804,9 +801,9 @@ class PhonekeyBLELock private constructor(
         fun onStatusReturn(type: LockType, isOpening: Boolean)
 
         /**
-         * Be called when verification code is incorrect
+         * Called when verification code is wrong or the lock doesn't support this function
          */
-        fun onVerificationCodeError()
+        fun onFailure(error: KeypadError)
     }
     /**
      * Remove keypad password
@@ -818,6 +815,7 @@ class PhonekeyBLELock private constructor(
      *
      * @param verificationCode after opening the lock and update KeyB successfully, the listener will return verification code
      * @param listener listen the result
+     * @see CheckKeypadStatusListener
      */
     fun checkKeypadStatus(verificationCode: String, listener: CheckKeypadStatusListener) {
         if (lockType == LockType.KEYPAD_NO_READER || lockType == LockType.KEYPAD_WITH_READER) {
@@ -825,7 +823,7 @@ class PhonekeyBLELock private constructor(
             sendDataAndReceive(data) { receivedData ->
                 // 0402
                 when (val status = receivedData.substring(7, 8)) {
-                    "2" -> listener.onVerificationCodeError()
+                    "2" -> listener.onFailure(KeypadError.VERIFICATION_CODE_ERROR)
                     else -> {
                         val isOpening = status == "0"
                         val type = when (receivedData.substring(5, 6)) {
@@ -840,20 +838,35 @@ class PhonekeyBLELock private constructor(
             }
         } else {
             Log.w(TAG, "This lock is not support Keypad")
+            listener.onFailure(KeypadError.NOT_SUPPORT)
         }
     }
 
+    interface RemoveKeypadPasswordListener {
+        /**
+         * Called when the keypad doesn't support this function
+         *
+         * */
+        fun onFailure(error: KeypadError)
+        fun onSuccess()
+    }
     /**
      * After checkKeypadStatus, removing keypad's password is available
-     * 1. Write 040301 and will receive as finish
+     * 1. Write 040301 and will receive 0404 as finish
      *
      * @param listener listen the result
+     * @see RemoveKeypadPasswordListener
      */
-    fun removeKeypadPassword(listener: () -> Unit) {
-        val data = "040301"
-        sendDataAndReceive(data) {
-            // 0404
-            listener()
+    fun removeKeypadPassword(listener: RemoveKeypadPasswordListener) {
+        if (lockType == LockType.KEYPAD_NO_READER || lockType == LockType.KEYPAD_WITH_READER) {
+            val data = "040301"
+            sendDataAndReceive(data) {
+                // 0404
+                listener.onSuccess()
+            }
+        } else {
+            Log.w(TAG, "This lock is not support Keypad")
+            listener.onFailure(KeypadError.NOT_SUPPORT)
         }
     }
 

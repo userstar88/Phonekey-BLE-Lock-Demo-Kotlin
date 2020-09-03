@@ -39,6 +39,7 @@ import org.json.JSONObject
 import timber.log.Timber
 import java.io.IOException
 import java.util.*
+import kotlin.concurrent.thread
 
 @SuppressLint("SetTextI18n")
 class LockFragment : Fragment() {
@@ -58,8 +59,9 @@ class LockFragment : Fragment() {
     private lateinit var scanResult: ScanResult
     private lateinit var lockName: String
     private lateinit var phonekeyBLELock: PhonekeyBLELock
-    private var alertDialog: AlertDialog? = null
+    private lateinit var lockType: PhonekeyBLELock.LockType
     private var isActive = false
+    private var alertDialog: AlertDialog? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -72,15 +74,14 @@ class LockFragment : Fragment() {
          * Init your bluetooth class with PhonykeyBLELock first
          * Your bluetooth class must implement AbstractPhonekeyBLEHelper
          *
-         * @see AbstractPhonekeyBLEHelper
+         * @see BLEHelper
          * */
         phonekeyBLELock = PhonekeyBLELock.Builder()
             .enableLog(true)
             .setLockName(lockName)
             .setBLEHelper(BLEHelper.getInstance())
-            .setOnReadyListener {
-                Timber.i("Lock type: ${phonekeyBLELock.getLockType()}")
-                updateLockStatus()
+            .setOnReadyListener { isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: PhonekeyBLELock.LockType ->
+                refreshLock(isActive, battery, version, isOpening, type)
             }
             .build()
 
@@ -89,7 +90,7 @@ class LockFragment : Fragment() {
         }
 
         activate_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 makeToastAndLog("Lock have been activated", 0)
             } else {
                 alertDialog = AlertDialog.Builder(requireContext())
@@ -104,7 +105,7 @@ class LockFragment : Fragment() {
         }
 
         deactivate_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 deactivate()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -112,7 +113,7 @@ class LockFragment : Fragment() {
         }
 
         establish_key_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 establishKey()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -120,7 +121,7 @@ class LockFragment : Fragment() {
         }
 
         open_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 openLock()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -128,7 +129,7 @@ class LockFragment : Fragment() {
         }
 
         reset_lock_password_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 changeLockPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -136,7 +137,7 @@ class LockFragment : Fragment() {
         }
 
         reset_lock_password_by_nfc_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 resetLockPasswordByNfc()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -144,7 +145,7 @@ class LockFragment : Fragment() {
         }
 
         check_lock_password_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 checkLockPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -152,7 +153,7 @@ class LockFragment : Fragment() {
         }
 
         set_keypad_password_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 setKeypadPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -160,7 +161,7 @@ class LockFragment : Fragment() {
         }
 
         remove_keypad_password_Button.setOnClickListener {
-            if (isActive) {
+            if (phonekeyBLELock.isActive) {
                 removeKeypadPassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
@@ -188,28 +189,35 @@ class LockFragment : Fragment() {
 
     override fun onStop() {
         super.onStop()
+        Timber.i("onStop")
         BLEHelper.getInstance().disConnectBLE()
         EventBus.getDefault().unregister(this)
     }
 
     private fun updateLockStatus() {
         // Update lock's status
-        phonekeyBLELock.isActive {
-            active_status_TextView.text = "isActive: $it"
-            isActive = it
-            phonekeyBLELock.getStatus(object : PhonekeyBLELock.GetStatusListener {
-                override fun onReceive(
-                    battery: String,
-                    version: String,
-                    isOpening: Boolean,
-                    type: PhonekeyBLELock.LockType
-                ) {
-                    battery_TextView.text = "Battery: $battery"
-                    version_TextView.text = "Version: $version"
-                    open_close_status_TextView.text = "isOpening: $isOpening"
-                }
-            })
-        }
+        phonekeyBLELock.getStatus(object : PhonekeyBLELock.GetStatusListener {
+            override fun onReceive(
+                isActive: Boolean,
+                battery: String,
+                version: String,
+                isOpening: Boolean,
+                type: PhonekeyBLELock.LockType
+            ) {
+                refreshLock(isActive, battery, version, isOpening, type)
+            }
+        })
+    }
+
+    private fun refreshLock(isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: PhonekeyBLELock.LockType) {
+        this.isActive = isActive
+        this.lockType = type
+
+        lock_type_TextView.text = "Lock Type: ${this.lockType}"
+        is_active_TextView.text = "isActive: ${this.isActive}"
+        battery_TextView.text = "Battery: $battery"
+        version_TextView.text = "Version: $version"
+        open_close_status_TextView.text = "isOpening: $isOpening"
     }
 
     /*-------------------------Activation----------------------------------------------------*/
@@ -354,11 +362,6 @@ class LockFragment : Fragment() {
 
     /*-------------------------Lock Password------------------------------------------------------------*/
     private fun changeLockPassword() {
-        if (!isActive) {
-            makeToastAndLog("Activated Lock first!!!", 0)
-            return
-        }
-
         enterPasswordAlertDialog("Enter old lock password",
             PasswordType.LOCK
         ) { oldLockPassword ->
@@ -393,11 +396,6 @@ class LockFragment : Fragment() {
     }
 
     private fun resetLockPasswordByNfc() {
-        if (!isActive) {
-            makeToastAndLog("Activated Lock first!!!", 0)
-            return
-        }
-
         if (NfcAdapter.getDefaultAdapter(requireContext()) != null) {
             enterPasswordAlertDialog("New lock password", PasswordType.LOCK) { newLockPassword ->
                 Timber.i("New lock password: $newLockPassword")
@@ -612,7 +610,8 @@ class LockFragment : Fragment() {
 
     private fun setKeypadPassword() {
         Timber.i("Set keypad password.")
-        GlobalScope.launch(Dispatchers.IO) {
+
+        thread {
             val response = OkHttpClient().newCall(Request.Builder()
                 .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&t1=00000000000000000000")
                 .build())
@@ -628,8 +627,11 @@ class LockFragment : Fragment() {
                     PasswordType.KEYPAD
                 ) { keypadPassword ->
                     phonekeyBLELock.setKeypadPassword(ac3, keypadPassword, object : PhonekeyBLELock.SetKeypadPasswordListener{
-                        override fun onAC3Error() {
-                            makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
+                        override fun onFailure(error: PhonekeyBLELock.KeypadError) {
+                            when (error) {
+                                PhonekeyBLELock.KeypadError.AC3_ERROR -> makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
+                                PhonekeyBLELock.KeypadError.NOT_SUPPORT -> makeToastAndLog("This lock doesn't support this function", 0)
+                            }
                         }
 
                         override fun onSuccess() {
@@ -656,13 +658,23 @@ class LockFragment : Fragment() {
         phonekeyBLELock.checkKeypadStatus(verificationCode, object : PhonekeyBLELock.CheckKeypadStatusListener {
             override fun onStatusReturn(type: PhonekeyBLELock.LockType, isOpening: Boolean) {
                 makeToastAndLog("Lock isOpening: $isOpening", 1)
-                phonekeyBLELock.removeKeypadPassword {
-                    makeToastAndLog("Remove keypad password successfully", 1)
-                }
+
+                phonekeyBLELock.removeKeypadPassword(object : PhonekeyBLELock.RemoveKeypadPasswordListener {
+                    override fun onFailure(error: PhonekeyBLELock.KeypadError) {
+                        makeToastAndLog("This lock doesn't support this function", 0)
+                    }
+
+                    override fun onSuccess() {
+                        makeToastAndLog("Remove keypad password successfully", 1)
+                    }
+                })
             }
 
-            override fun onVerificationCodeError() {
-                makeToastAndLog("Verification code is incorrect!!!", 0)
+            override fun onFailure(error: PhonekeyBLELock.KeypadError) {
+                when (error) {
+                    PhonekeyBLELock.KeypadError.VERIFICATION_CODE_ERROR ->  makeToastAndLog("Verification code is incorrect!!!", 0)
+                    PhonekeyBLELock.KeypadError.NOT_SUPPORT -> makeToastAndLog("This lock doesn't support this function", 0)
+                }
             }
         })
     }
