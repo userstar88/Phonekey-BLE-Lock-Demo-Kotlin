@@ -135,26 +135,26 @@
                 android:background="@android:color/transparent" />
 
             <Button
-                android:id="@+id/reset_lock_password_Button"
+                android:id="@+id/reset_device_password_Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="RESET LOCK PASSWORD"
+                android:text="RESET DEVICE PASSWORD"
                 android:textColor="@android:color/holo_blue_light"
                 android:background="@android:color/transparent" />
 
             <Button
-                android:id="@+id/reset_lock_password_by_nfc_Button"
+                android:id="@+id/reset_device_password_by_nfc_Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="RESET LOCK PASSWORD BY NFC"
+                android:text="RESET DEVICE PASSWORD BY NFC"
                 android:textColor="@android:color/holo_blue_light"
                 android:background="@android:color/transparent" />
 
             <Button
-                android:id="@+id/check_lock_password_Button"
+                android:id="@+id/check_device_password_Button"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="CHECK LOCK PASSWORD"
+                android:text="CHECK DEVICE PASSWORD"
                 android:textColor="@android:color/holo_blue_light"
                 android:background="@android:color/transparent" />
 

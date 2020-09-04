@@ -128,25 +128,25 @@ class LockFragment : Fragment() {
             }
         }
 
-        reset_lock_password_Button.setOnClickListener {
+        reset_device_password_Button.setOnClickListener {
             if (phonekeyBLELock.isActive) {
-                changeLockPassword()
+                changeDevicePassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
         }
 
-        reset_lock_password_by_nfc_Button.setOnClickListener {
+        reset_device_password_by_nfc_Button.setOnClickListener {
             if (phonekeyBLELock.isActive) {
-                resetLockPasswordByNfc()
+                resetDevicePasswordByNfc()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
         }
 
-        check_lock_password_Button.setOnClickListener {
+        check_device_password_Button.setOnClickListener {
             if (phonekeyBLELock.isActive) {
-                checkLockPassword()
+                checkDevicePassword()
             } else {
                 makeToastAndLog("Activated Lock first!!!", 0)
             }
@@ -238,11 +238,11 @@ class LockFragment : Fragment() {
                     tagLiveData = null
                     alertDialog!!.dismiss()
 
-                    enterPasswordAlertDialog("Set your lock password",
+                    enterPasswordAlertDialog("Set your device password",
                         PasswordType.LOCK
-                    ) { lockPassword ->
-                        Timber.i("Set lock password: $lockPassword")
-                        phonekeyBLELock.activate(nfcV, lockPassword, object : PhonekeyBLELock.ActivateListener {
+                    ) { devicePassword ->
+                        Timber.i("Set device password: $devicePassword")
+                        phonekeyBLELock.activate(nfcV, devicePassword, object : PhonekeyBLELock.ActivateListener {
                             override fun onFailure(
                                 status: PhonekeyBLELock.ActivationCodeStatus,
                                 errorTimes: Int,
@@ -288,11 +288,11 @@ class LockFragment : Fragment() {
                     qrCodeLiveData!!.removeObservers(viewLifecycleOwner)
                     qrCodeLiveData = null
 
-                    enterPasswordAlertDialog("Set your lock password",
+                    enterPasswordAlertDialog("Set your device password",
                         PasswordType.LOCK
-                    ) { lockPassword ->
-                        Timber.i("Set lock password: $lockPassword")
-                        phonekeyBLELock.activate(code, lockPassword, object : PhonekeyBLELock.ActivateListener {
+                    ) { devicePassword ->
+                        Timber.i("Set device password: $devicePassword")
+                        phonekeyBLELock.activate(code, devicePassword, object : PhonekeyBLELock.ActivateListener {
                             override fun onFailure(
                                 status: PhonekeyBLELock.ActivationCodeStatus,
                                 errorTimes: Int,
@@ -335,18 +335,18 @@ class LockFragment : Fragment() {
             .setMessage("This action will reset the lock and clear lock's memory")
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Confirm") { _, _ ->
-                enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
+                enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
 
-                    phonekeyBLELock.deactivate(lockPassword, object : PhonekeyBLELock.DeactivateListener {
+                    phonekeyBLELock.deactivate(devicePassword, object : PhonekeyBLELock.DeactivateListener {
                         override fun onFailure(
-                            status: PhonekeyBLELock.LockPasswordStatus,
+                            status: PhonekeyBLELock.DevicePasswordStatus,
                             errorTimes: Int,
                             needToWait: Int
                         ) {
                             when (status) {
-                                PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
-                                PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password ERROR $errorTimes times.", 0)
-                                PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password ERROR 3 times, need to wait $needToWait minutes.", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password ERROR $errorTimes times.", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password ERROR 3 times, need to wait $needToWait minutes.", 0)
                             }
                         }
 
@@ -360,34 +360,34 @@ class LockFragment : Fragment() {
             .show()
     }
 
-    /*-------------------------Lock Password------------------------------------------------------------*/
-    private fun changeLockPassword() {
-        enterPasswordAlertDialog("Enter old lock password",
+    /*-------------------------Device Password------------------------------------------------------------*/
+    private fun changeDevicePassword() {
+        enterPasswordAlertDialog("Enter old device password",
             PasswordType.LOCK
-        ) { oldLockPassword ->
-            Timber.i("Old lock password: $oldLockPassword")
-            enterPasswordAlertDialog("Enter new lock password",
+        ) { oldDevicePassword ->
+            Timber.i("Old device password: $oldDevicePassword")
+            enterPasswordAlertDialog("Enter new device password",
                 PasswordType.LOCK
-            ) { newLockPassword ->
-                Timber.i("New lock password: $newLockPassword")
-                phonekeyBLELock.changeLockPassword(
-                    oldLockPassword,
-                    newLockPassword,
-                    object : PhonekeyBLELock.ChangeLockPasswordListener {
+            ) { newDevicePassword ->
+                Timber.i("New device password: $newDevicePassword")
+                phonekeyBLELock.changeDevicePassword(
+                    oldDevicePassword,
+                    newDevicePassword,
+                    object : PhonekeyBLELock.ChangeDevicePasswordListener {
                         override fun onFailure(
-                            status: PhonekeyBLELock.LockPasswordStatus,
+                            status: PhonekeyBLELock.DevicePasswordStatus,
                             errorTimes: Int,
                             needToWait: Int
                         ) {
                             when (status) {
-                                PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
-                                PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password INCORRECT $errorTimes times", 0)
-                                PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password INCORRECT 3 times, need to wait $needToWait minutes", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password INCORRECT $errorTimes times", 0)
+                                PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password INCORRECT 3 times, need to wait $needToWait minutes", 0)
                             }
                         }
 
                         override fun onSuccess() {
-                            makeToastAndLog("Set new password $newLockPassword SUCCESSFULLY", 1)
+                            makeToastAndLog("Set new password $newDevicePassword SUCCESSFULLY", 1)
                         }
                     }
                 )
@@ -395,10 +395,10 @@ class LockFragment : Fragment() {
         }
     }
 
-    private fun resetLockPasswordByNfc() {
+    private fun resetDevicePasswordByNfc() {
         if (NfcAdapter.getDefaultAdapter(requireContext()) != null) {
-            enterPasswordAlertDialog("New lock password", PasswordType.LOCK) { newLockPassword ->
-                Timber.i("New lock password: $newLockPassword")
+            enterPasswordAlertDialog("New device password", PasswordType.LOCK) { newDevicePassword ->
+                Timber.i("New device password: $newDevicePassword")
                 alertDialog = AlertDialog.Builder(requireContext())
                     .setMessage("Scan NFC Tag")
                     .setOnCancelListener {
@@ -412,9 +412,9 @@ class LockFragment : Fragment() {
                         tagLiveData = null
                         alertDialog!!.dismiss()
 
-                        phonekeyBLELock.resetLockPassword(
+                        phonekeyBLELock.resetDevicePassword(
                             nfcV,
-                            newLockPassword,
+                            newDevicePassword,
                             object : PhonekeyBLELock.ActivateListener {
                                 override fun onFailure(
                                     status: PhonekeyBLELock.ActivationCodeStatus,
@@ -429,7 +429,7 @@ class LockFragment : Fragment() {
                                 }
 
                                 override fun onSuccess() {
-                                    makeToastAndLog("Reset lock password SUCCESSFULLY.", 1)
+                                    makeToastAndLog("Reset device password SUCCESSFULLY.", 1)
                                 }
                             }
                         )
@@ -441,19 +441,19 @@ class LockFragment : Fragment() {
         }
     }
 
-    private fun checkLockPassword() {
-        Timber.i("Check lock password")
-        enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
-            phonekeyBLELock.checkLockPassword(lockPassword, object : PhonekeyBLELock.CheckLockPasswordListener {
+    private fun checkDevicePassword() {
+        Timber.i("Check device password")
+        enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
+            phonekeyBLELock.checkDevicePassword(devicePassword, object : PhonekeyBLELock.CheckDevicePasswordListener {
                 override fun onResult(
-                    status: PhonekeyBLELock.LockPasswordStatus,
+                    status: PhonekeyBLELock.DevicePasswordStatus,
                     errorTimes: Int,
                     needToWait: Int
                 ) {
                     when (status) {
-                        PhonekeyBLELock.LockPasswordStatus.CORRECT -> makeToastAndLog("Lock password is correct!!!", 0)
-                        PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password INCORRECT $errorTimes times", 0)
-                        PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password INCORRECT 3 times, need to wait $needToWait minutes", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.CORRECT -> makeToastAndLog("Device password is correct!!!", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password INCORRECT $errorTimes times", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password INCORRECT 3 times, need to wait $needToWait minutes", 0)
                     }
                 }
             })
@@ -466,17 +466,17 @@ class LockFragment : Fragment() {
      * Properly storing the KeyA and KeyB, use this two value to calculate AC3 and do a opening or set keypad password
      */
     private fun establishKey() {
-        enterPasswordAlertDialog("Lock password", PasswordType.LOCK) { lockPassword ->
-            phonekeyBLELock.establishKey(lockPassword, object : PhonekeyBLELock.EstablishKeyListener {
+        enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
+            phonekeyBLELock.establishKey(devicePassword, object : PhonekeyBLELock.EstablishKeyListener {
                 override fun onFailure(
-                    status: PhonekeyBLELock.LockPasswordStatus,
+                    status: PhonekeyBLELock.DevicePasswordStatus,
                     errorTimes: Int,
                     needToWait: Int
                 ) {
                     when (status) {
-                        PhonekeyBLELock.LockPasswordStatus.LENGTH_ERROR -> makeToastAndLog("Lock password length ERROR!!!", 0)
-                        PhonekeyBLELock.LockPasswordStatus.INCORRECT -> makeToastAndLog("Lock password ERROR $errorTimes times.", 0)
-                        PhonekeyBLELock.LockPasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Lock password ERROR 3 times, need to wait $needToWait minutes.", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> makeToastAndLog("Device password length ERROR!!!", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> makeToastAndLog("Device password ERROR $errorTimes times.", 0)
+                        PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> makeToastAndLog("Device password ERROR 3 times, need to wait $needToWait minutes.", 0)
                     }
                 }
 
@@ -512,6 +512,10 @@ class LockFragment : Fragment() {
         }
     }
 
+    /**
+     * Make sure key already established!!!
+     * Or there are not KeyA and KeyB to calculate AC3
+     */
     private var canOpen = true
     private var secs = 0
     private fun openLock() {
@@ -559,7 +563,7 @@ class LockFragment : Fragment() {
                         makeToastAndLog("Failed to get AC3", 0)
                     }
                 } else {
-                    makeToastAndLog("Get AC3 ERROR.", 0)
+                    makeToastAndLog("Get AC3 ERROR. Maybe need to establish key.", 0)
                 }
             }
         } else {
