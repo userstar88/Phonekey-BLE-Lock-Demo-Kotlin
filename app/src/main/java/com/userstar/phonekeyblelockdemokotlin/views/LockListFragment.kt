@@ -18,6 +18,7 @@ import com.userstar.phonekeyblelockdemokotlin.R
 import kotlinx.android.synthetic.main.lock_list_fragment.*
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
 
 class LockListFragment : Fragment() {
@@ -45,6 +46,8 @@ class LockListFragment : Fragment() {
         return view
     }
 
+    private val timer = Timer()
+    private var flag = true
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -63,7 +66,7 @@ class LockListFragment : Fragment() {
 
                     override fun onScanResult(callbackType: Int, result: ScanResult?) {
                         super.onScanResult(callbackType, result)
-                        if (isNotConnected) {
+                        if (isNotConnected && flag) {
                             if (result != null && result.device.name!=null) {
                                 Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
                                 var isNewDevice = true
@@ -104,6 +107,7 @@ class LockListFragment : Fragment() {
             ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.lock_list_recycler_view_holder, parent, false))
 
         var scanResultList = CopyOnWriteArrayList<ScanResult>()
+//        var deviceList =
         fun updateList(result: ScanResult) {
             Timber.i("add lock ${result.device.name}")
             requireActivity().runOnUiThread {
@@ -114,9 +118,9 @@ class LockListFragment : Fragment() {
 
         fun updateRssi(position: Int, result: ScanResult) {
             Timber.i("update ${result.device.name} rssi: ${result.rssi} ")
+            scanResultList[position] = result
             requireActivity().runOnUiThread {
-                scanResultList[position] = result
-                notifyDataSetChanged()
+                notifyItemChanged(position)
             }
         }
 
@@ -138,6 +142,14 @@ class LockListFragment : Fragment() {
             val lockRSSITextView: TextView = view.findViewById(R.id.lock_rssi_textView)
         }
     }
+
+    data class Device(
+        var name: String,
+        var address: String,
+        var rssi: String,
+        var holder: LockListRecyclerViewAdapter.ViewHolder? = null,
+        var scanResult: ScanResult? = null
+    )
 
     private fun connect(result: ScanResult) {
 

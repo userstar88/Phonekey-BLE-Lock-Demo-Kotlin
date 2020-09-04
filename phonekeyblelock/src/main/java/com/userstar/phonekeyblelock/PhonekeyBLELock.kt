@@ -687,20 +687,24 @@ class PhonekeyBLELock private constructor(
      * @param listener listen the result
      * */
     fun open(ac3: String, listener: OpenListener) {
-        val data = "0203$ac3"
-        sendDataAndReceive(data) { receivedData ->
-            // 0204
-            if (receivedData.substring(4, 6) == "01") {
-                val newKeyB = receivedData.substring(6, 26)
-                val secs = try {
-                    receivedData.substring(27, 28).toInt()
-                } catch (e: Exception) {
-                    0
+        var data = "9901"
+        sendDataAndReceive(data) {
+            Log.i(TAG, "KeyB before: " + it.substring(4))
+            data = "0203$ac3"
+            sendDataAndReceive(data) { receivedData ->
+                // 0204
+                if (receivedData.substring(4, 6) == "01") {
+                    val newKeyB = receivedData.substring(6, 26)
+                    val secs = try {
+                        receivedData.substring(27, 28).toInt()
+                    } catch (e: Exception) {
+                        0
+                    }
+                    listener.onSuccess(newKeyB, secs)
+                } else {
+                    Log.e(TAG, "AC3 Error")
+                    listener.onAC3Error()
                 }
-                listener.onSuccess(newKeyB, secs)
-            } else {
-                Log.e(TAG, "AC3 Error")
-                listener.onAC3Error()
             }
         }
     }
@@ -753,6 +757,9 @@ class PhonekeyBLELock private constructor(
         sendDataAndReceive(data) { receivedData ->
             // 0206
             listener(receivedData.substring(6))
+            sendDataAndReceive("9901") {
+                Log.i(TAG, "KeyB after: " + it.substring(4))
+            }
         }
     }
 
