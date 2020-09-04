@@ -151,11 +151,16 @@ class PhonekeyBLELock private constructor(
                 val battery = receivedData.substring(6, 8)
                 val version = receivedData.substring(10, 12)
                 val isOpening = receivedData.substring(14, 16) == "00"
-                val type = when (receivedData.substring(19, 20)) {
-                    "2" -> LockType.KEYPAD_NO_READER
-                    "3" -> LockType.KEYPAD_WITH_READER
-                    else -> LockType.NO_KEYPAD
+                val type = if (version == "03") {
+                     when (receivedData.substring(19, 20)) {
+                        "2" -> LockType.KEYPAD_NO_READER
+                        "3" -> LockType.KEYPAD_WITH_READER
+                        else -> LockType.NO_KEYPAD
+                    }
+                } else {
+                    LockType.UNDEFINED
                 }
+
                 listener.onReceive(isActive, battery, version, isOpening, type)
             }
         }
@@ -617,7 +622,7 @@ class PhonekeyBLELock private constructor(
     }
 
 
-    /*---------------------Unlock----------------------------------------------------------------------------------------------------------*/
+    /*---------------------Open----------------------------------------------------------------------------------------------------------*/
     /*
     * When unlocking the lock, there is 4 steps
     *
@@ -666,6 +671,7 @@ class PhonekeyBLELock private constructor(
          * Pass new KeyB from the lock
          *
          * @param newKeyB the new KeyB
+         * @param secs after "secs", the lock will close automatically, meanwhile the lock can not accept any data, or it will occur unexpected error
          * */
         fun onSuccess(newKeyB: String, secs: Int)
     }
@@ -684,9 +690,17 @@ class PhonekeyBLELock private constructor(
         val data = "0203$ac3"
         sendDataAndReceive(data) { receivedData ->
             // 0204
-            when (receivedData.substring(5, 6)) {
-                "0" -> Log.e(TAG, "AC3 Error")
-                "1" -> listener.onSuccess(receivedData.substring(6, 26), receivedData.substring(27, 28).toInt())
+            if (receivedData.substring(4, 6) == "01") {
+                val newKeyB = receivedData.substring(6, 26)
+                val secs = try {
+                    receivedData.substring(27, 28).toInt()
+                } catch (e: Exception) {
+                    0
+                }
+                listener.onSuccess(newKeyB, secs)
+            } else {
+                Log.e(TAG, "AC3 Error")
+                listener.onAC3Error()
             }
         }
     }

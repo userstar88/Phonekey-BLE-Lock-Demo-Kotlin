@@ -515,6 +515,9 @@ class LockFragment : Fragment() {
     /**
      * Make sure key already established!!!
      * Or there are not KeyA and KeyB to calculate AC3
+     *
+     * In this example, we save KeyA and KeyB on ours Userstar server
+     *
      */
     private var canOpen = true
     private var secs = 0
@@ -563,7 +566,7 @@ class LockFragment : Fragment() {
                         makeToastAndLog("Failed to get AC3", 0)
                     }
                 } else {
-                    makeToastAndLog("Get AC3 ERROR. Maybe need to establish key.", 0)
+                    makeToastAndLog("Get AC3 ERROR", 0)
                 }
             }
         } else {
@@ -752,7 +755,8 @@ class LockFragment : Fragment() {
         return linearLayout
     }
 
-    private fun makeToastAndLog(message: String, logger: Int) {
+
+    fun makeToastAndLog(message: String, logger: Int) {
         if (logger==1) {
             Timber.i(message)
         } else {

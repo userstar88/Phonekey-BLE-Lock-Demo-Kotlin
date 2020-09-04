@@ -37,6 +37,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     private var adapter: BluetoothAdapter? = null
     private lateinit var bluetoothLeScanner: BluetoothLeScanner
     private lateinit var scanCallback: ScanCallback
+    var isScanning = false
     fun startScan(
         context: Context,
         nameFilter: Array<String>?,
@@ -47,6 +48,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             Toast.makeText(context, "THIS DEVICE IS NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
             return
         } else {
+            isScanning = true
             bluetoothLeScanner = adapter!!.bluetoothLeScanner
             scanCallback = callback
             if (nameFilter==null) {
@@ -70,6 +72,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     fun stopScan() {
         bluetoothLeScanner.stopScan(scanCallback)
+        isScanning = false
     }
 
     var bluetoothGatt: BluetoothGatt? = null

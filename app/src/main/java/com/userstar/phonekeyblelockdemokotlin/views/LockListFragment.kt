@@ -52,38 +52,42 @@ class LockListFragment : Fragment() {
         lockListRecyclerViewAdapter.notifyDataSetChanged()
 
         start_scan_Button.setOnClickListener {
-            BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
-                override fun onScanFailed(errorCode: Int) {
-                    super.onScanFailed(errorCode)
-                    Timber.i("failed: $errorCode")
-                }
+            if (BLEHelper.getInstance().isScanning) {
+                Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
+            } else {
+                BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+                    override fun onScanFailed(errorCode: Int) {
+                        super.onScanFailed(errorCode)
+                        Timber.i("failed: $errorCode")
+                    }
 
-                override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                    super.onScanResult(callbackType, result)
-                    if (isNotConnected) {
-                        if (result != null && result.device.name!=null) {
-                            Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
-                            var isNewDevice = true
-                            for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
-                                if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                    lockListRecyclerViewAdapter.updateRssi(position, result)
-                                    isNewDevice = false
-                                    break
+                    override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                        super.onScanResult(callbackType, result)
+                        if (isNotConnected) {
+                            if (result != null && result.device.name!=null) {
+                                Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
+                                var isNewDevice = true
+                                for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
+                                    if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                        lockListRecyclerViewAdapter.updateRssi(position, result)
+                                        isNewDevice = false
+                                        break
+                                    }
                                 }
-                            }
-                            if (isNewDevice) {
-                                // Add new locks
-                                lockListRecyclerViewAdapter.updateList(result)
+                                if (isNewDevice) {
+                                    // Add new locks
+                                    lockListRecyclerViewAdapter.updateList(result)
+                                }
                             }
                         }
                     }
-                }
 
-                override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                    super.onBatchScanResults(results)
-                    Timber.i(results.toString())
-                }
-            })
+                    override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                        super.onBatchScanResults(results)
+                        Timber.i(results.toString())
+                    }
+                })
+            }
         }
         start_scan_Button.setOnLongClickListener {
             start_scan_Button.performClick()
@@ -123,6 +127,7 @@ class LockListFragment : Fragment() {
             holder.lockMacTextView.text = scanResultList[position].device.address
             holder.lockRSSITextView.text = scanResultList[position].rssi.toString()
             holder.itemView.setOnClickListener {
+                Toast.makeText(requireContext(), "Connecting...", Toast.LENGTH_LONG).show()
                 connect(scanResultList[position])
             }
         }
