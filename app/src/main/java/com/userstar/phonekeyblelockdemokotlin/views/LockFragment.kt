@@ -618,37 +618,41 @@ class LockFragment : Fragment() {
     private fun setKeypadPassword() {
         Timber.i("Set keypad password.")
 
-        thread {
-            val response = OkHttpClient().newCall(Request.Builder()
-                .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&t1=00000000000000000000")
-                .build())
-                .execute()
-            Timber.i("$response")
+        if (phonekeyBLELock.getLockType() == PhonekeyBLELock.LockType.KEYPAD_WITH_READER || phonekeyBLELock.getLockType() == PhonekeyBLELock.LockType.KEYPAD_NO_READER) {
+            thread {
+                val response = OkHttpClient().newCall(Request.Builder()
+                    .url("http://210.65.11.172:8080/demo/Basketball/Netkey_keydata_demo.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&t1=00000000000000000000")
+                    .build())
+                    .execute()
+                Timber.i("$response")
 
-            if (response != null && response.isSuccessful) {
-                val jsonObject = JSONObject(response.body().string())
-                response.body().close()
-                Timber.i("response: $jsonObject")
-                val ac3 = jsonObject.getString("ac3")
-                enterPasswordAlertDialog("Set  keypad password",
-                    PasswordType.KEYPAD
-                ) { keypadPassword ->
-                    phonekeyBLELock.setKeypadPassword(ac3, keypadPassword, object : PhonekeyBLELock.SetKeypadPasswordListener{
-                        override fun onFailure(error: PhonekeyBLELock.KeypadError) {
-                            when (error) {
-                                PhonekeyBLELock.KeypadError.AC3_ERROR -> makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
-                                PhonekeyBLELock.KeypadError.NOT_SUPPORT -> makeToastAndLog("This lock doesn't support this function", 0)
+                if (response != null && response.isSuccessful) {
+                    val jsonObject = JSONObject(response.body().string())
+                    response.body().close()
+                    Timber.i("response: $jsonObject")
+                    val ac3 = jsonObject.getString("ac3")
+                    enterPasswordAlertDialog("Set  keypad password",
+                        PasswordType.KEYPAD
+                    ) { keypadPassword ->
+                        phonekeyBLELock.setKeypadPassword(ac3, keypadPassword, object : PhonekeyBLELock.SetKeypadPasswordListener{
+                            override fun onFailure(error: PhonekeyBLELock.KeypadError) {
+                                when (error) {
+                                    PhonekeyBLELock.KeypadError.AC3_ERROR -> makeToastAndLog("AC3 ERROR, check KeyA, KeyB and AC3, or redo Establish Key", 0)
+                                    PhonekeyBLELock.KeypadError.NOT_SUPPORT -> makeToastAndLog("This lock doesn't support this function", 0)
+                                }
                             }
-                        }
 
-                        override fun onSuccess() {
-                            makeToastAndLog("Set keypad password SUCCESSFULLY", 1)
-                        }
-                    })
+                            override fun onSuccess() {
+                                makeToastAndLog("Set keypad password SUCCESSFULLY", 1)
+                            }
+                        })
+                    }
+                } else {
+                    makeToastAndLog("Get AC3 ERROR!!!", 1)
                 }
-            } else {
-                makeToastAndLog("Get AC3 ERROR!!!", 1)
             }
+        } else {
+            makeToastAndLog("This lock doesn't support this function", 0)
         }
     }
 
@@ -711,7 +715,7 @@ class LockFragment : Fragment() {
                         PasswordType.KEYPAD -> {
                             if (editText.text.toString().length != 6) {
                                 AlertDialog.Builder(requireContext())
-                                    .setMessage("Length must equal 16")
+                                    .setMessage("Length must equal 6")
                                     .setNegativeButton("Dismiss", null)
                                     .show()
                                 return@setPositiveButton

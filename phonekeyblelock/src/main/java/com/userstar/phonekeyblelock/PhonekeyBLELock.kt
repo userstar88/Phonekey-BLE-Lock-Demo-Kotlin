@@ -233,7 +233,6 @@ class PhonekeyBLELock private constructor(
      * Activate lock by QR Code
      * Before any operation with the lock, you need to activate it first
      * 1. Write 0501 will receive 0502 with T1(0502XXXXXXXXXXXXXXXXXXXX), this procedure is just for getting T1, which is used to calculate later
-     *    T1 and QR code will be used to calculate 'uid', 'ac3', 'counter'
      *
      * 2. Write 0507 with uid and now time(specific format, provided) and will receive 0508 for next step
      *   @see get_time_8
@@ -687,24 +686,20 @@ class PhonekeyBLELock private constructor(
      * @param listener listen the result
      * */
     fun open(ac3: String, listener: OpenListener) {
-        var data = "9901"
-        sendDataAndReceive(data) {
-            Log.i(TAG, "KeyB before: " + it.substring(4))
-            data = "0203$ac3"
-            sendDataAndReceive(data) { receivedData ->
-                // 0204
-                if (receivedData.substring(4, 6) == "01") {
-                    val newKeyB = receivedData.substring(6, 26)
-                    val secs = try {
-                        receivedData.substring(27, 28).toInt()
-                    } catch (e: Exception) {
-                        0
-                    }
-                    listener.onSuccess(newKeyB, secs)
-                } else {
-                    Log.e(TAG, "AC3 Error")
-                    listener.onAC3Error()
+        val data = "0203$ac3"
+        sendDataAndReceive(data) { receivedData ->
+            // 0204
+            if (receivedData.substring(4, 6) == "01") {
+                val newKeyB = receivedData.substring(6, 26)
+                val secs = try {
+                    receivedData.substring(27, 28).toInt()
+                } catch (e: Exception) {
+                    0
                 }
+                listener.onSuccess(newKeyB, secs)
+            } else {
+                Log.e(TAG, "AC3 Error")
+                listener.onAC3Error()
             }
         }
     }
@@ -757,9 +752,6 @@ class PhonekeyBLELock private constructor(
         sendDataAndReceive(data) { receivedData ->
             // 0206
             listener(receivedData.substring(6))
-            sendDataAndReceive("9901") {
-                Log.i(TAG, "KeyB after: " + it.substring(4))
-            }
         }
     }
 
