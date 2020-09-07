@@ -46,7 +46,7 @@ public class Userstar {
         return ls_random.toString().toUpperCase();
     }
 
-    public static String[] encryptLockPassword(String lockName, String T1, String masterPassword) {
+    public static String[] encryptDevicePassword(String lockName, String T1, String masterPassword) {
         String ls_A2 = "00000000000000000000000000000000";
         String ls_counter = random_value(2, 2).toUpperCase();
         String ls_mac = AES.parseAscii2HexStr(lockName.substring(3, 11)).toUpperCase();

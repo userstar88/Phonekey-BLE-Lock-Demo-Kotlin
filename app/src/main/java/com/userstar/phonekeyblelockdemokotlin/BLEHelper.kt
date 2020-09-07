@@ -12,6 +12,11 @@ import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
 import timber.log.Timber
 import java.util.*
 
+/**
+ * This is a simple BLEHelper example class
+ *
+ * @see AbstractPhonekeyBLEHelper
+ * */
 class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     companion object {
@@ -32,6 +37,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     private var adapter: BluetoothAdapter? = null
     private lateinit var bluetoothLeScanner: BluetoothLeScanner
     private lateinit var scanCallback: ScanCallback
+    var isScanning = false
     fun startScan(
         context: Context,
         nameFilter: Array<String>?,
@@ -42,6 +48,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             Toast.makeText(context, "THIS DEVICE IS NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
             return
         } else {
+            isScanning = true
             bluetoothLeScanner = adapter!!.bluetoothLeScanner
             scanCallback = callback
             if (nameFilter==null) {
@@ -65,6 +72,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
 
     fun stopScan() {
         bluetoothLeScanner.stopScan(scanCallback)
+        isScanning = false
     }
 
     var bluetoothGatt: BluetoothGatt? = null
@@ -146,6 +154,8 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     override fun write(data: ByteArray, callback: (BluetoothGattCharacteristic) -> Unit) {
         this.callback = callback
         gattCharacteristicWrite!!.value = data
+
+        // To prevent lock doesn't response, a little delay when sending data will be suggested
         Timer().schedule(object : TimerTask() {
             override fun run() {
                 bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)

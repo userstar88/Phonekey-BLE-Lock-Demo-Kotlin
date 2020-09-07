@@ -3,10 +3,10 @@ package com.userstar.phonekeyblelock
 import android.bluetooth.BluetoothGattCharacteristic
 
 /**
- * Implement this abstract class with you own Bluetooth class
+ * Implement this abstract class with your own Bluetooth class
  * Your BLE class must contain this two part:
  *
- *    write(ByteArray, (BluetoothGattCharacteristic) -> Unit), which is for send data to Lock
+ *    write(ByteArray, (BluetoothGattCharacteristic) -> Unit), which is for send data to lock
  *    callback, which is for receive data from Lock
  */
 abstract class AbstractPhonekeyBLEHelper {
