@@ -20,10 +20,7 @@ class PhonekeyBLELock private constructor(
         return lockType
     }
 
-    private var isReady = false
-    fun isReady() : Boolean {
-        return isReady
-    }
+    var isActive = false
 
     enum class DevicePasswordStatus {
         CORRECT,
@@ -105,7 +102,6 @@ class PhonekeyBLELock private constructor(
             phonekeyBLELock.getStatus(object : GetStatusListener {
                 override fun onReceive(isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType) {
                     phonekeyBLELock.lockType = type
-                    phonekeyBLELock.isReady = true
 
                     if (listener!=null) {
                         listener!!(isActive, battery, version, isOpening, type)
@@ -119,7 +115,6 @@ class PhonekeyBLELock private constructor(
 
 
     /*---------------------Lock status---------------------------------------------------------------------------------------------------------------*/
-    var isActive = false
 
     interface GetStatusListener {
         fun onReceive(isActive: Boolean, battery: String, version: String, isOpening: Boolean, type: LockType)

@@ -142,7 +142,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             ) {
                 super.onCharacteristicChanged(gatt, characteristic)
                 if (characteristic!=null) {
-                    callback(characteristic)
+                    listener(characteristic)
                 } else {
                     Timber.w("characteristic null")
                 }
@@ -150,9 +150,9 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         })
     }
 
-    override lateinit var callback: (BluetoothGattCharacteristic) -> Unit
+    override lateinit var listener: (BluetoothGattCharacteristic) -> Unit
     override fun write(data: ByteArray, callback: (BluetoothGattCharacteristic) -> Unit) {
-        this.callback = callback
+        this.listener = callback
         gattCharacteristicWrite!!.value = data
 
         // To prevent lock doesn't response, a little delay when sending data will be suggested

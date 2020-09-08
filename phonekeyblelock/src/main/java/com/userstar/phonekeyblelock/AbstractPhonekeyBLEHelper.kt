@@ -28,5 +28,5 @@ abstract class AbstractPhonekeyBLEHelper {
      *   The app receives data through notify mode service
      *   Normally, it is BluetoothGattCallback.onCharacteristicChanged(BluetoothGatt?, BluetoothGattCharacteristic?)
      */
-    abstract var callback: (BluetoothGattCharacteristic) -> Unit
+    abstract var listener: (BluetoothGattCharacteristic) -> Unit
 }
