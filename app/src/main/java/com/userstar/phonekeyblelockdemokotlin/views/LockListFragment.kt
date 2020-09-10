@@ -46,8 +46,6 @@ class LockListFragment : Fragment() {
         return view
     }
 
-    private val timer = Timer()
-    private var flag = true
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
@@ -66,21 +64,19 @@ class LockListFragment : Fragment() {
 
                     override fun onScanResult(callbackType: Int, result: ScanResult?) {
                         super.onScanResult(callbackType, result)
-                        if (isNotConnected && flag) {
-                            if (result != null && result.device.name!=null) {
-                                Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
-                                var isNewDevice = true
-                                for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
-                                    if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                        lockListRecyclerViewAdapter.updateRssi(position, result)
-                                        isNewDevice = false
-                                        break
-                                    }
+                        if (result != null && result.device.name!=null) {
+                            Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
+                            var isNewDevice = true
+                            for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
+                                if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                    lockListRecyclerViewAdapter.updateRssi(position, result)
+                                    isNewDevice = false
+                                    break
                                 }
-                                if (isNewDevice) {
-                                    // Add new locks
-                                    lockListRecyclerViewAdapter.updateList(result)
-                                }
+                            }
+                            if (isNewDevice) {
+                                // Add new locks
+                                lockListRecyclerViewAdapter.updateList(result)
                             }
                         }
                     }
@@ -93,21 +89,20 @@ class LockListFragment : Fragment() {
             }
         }
         start_scan_Button.setOnLongClickListener {
+            isAutoConnect = true
             start_scan_Button.performClick()
-            autoConnect("BKBCBKDPEIP")
             true
         }
-
-        isNotConnected = true
     }
 
+    private var isAutoConnect = false
+    private val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
     inner class LockListRecyclerViewAdapter : RecyclerView.Adapter<LockListRecyclerViewAdapter.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
             ViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.lock_list_recycler_view_holder, parent, false))
 
-        var scanResultList = CopyOnWriteArrayList<ScanResult>()
-//        var deviceList =
+        var scanResultList = ArrayList<ScanResult>()
         fun updateList(result: ScanResult) {
             Timber.i("add lock ${result.device.name}")
             requireActivity().runOnUiThread {
@@ -134,6 +129,12 @@ class LockListFragment : Fragment() {
                 Toast.makeText(requireContext(), "Connecting...", Toast.LENGTH_LONG).show()
                 connect(scanResultList[position])
             }
+
+            if (isAutoConnect && scanResultList[position].device.name == AUTO_CONNECT_LOCK) {
+                isAutoConnect = false
+                Toast.makeText(requireContext(), "Connecting...", Toast.LENGTH_LONG).show()
+                connect(scanResultList[position])
+            }
         }
 
         inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -142,14 +143,6 @@ class LockListFragment : Fragment() {
             val lockRSSITextView: TextView = view.findViewById(R.id.lock_rssi_textView)
         }
     }
-
-    data class Device(
-        var name: String,
-        var address: String,
-        var rssi: String,
-        var holder: LockListRecyclerViewAdapter.ViewHolder? = null,
-        var scanResult: ScanResult? = null
-    )
 
     private fun connect(result: ScanResult) {
 
@@ -176,20 +169,5 @@ class LockListFragment : Fragment() {
             result.device,
             callbackConnected,
             callbackDisconnected)
-    }
-
-    private var isNotConnected = true
-    private fun autoConnect(lockName: String) {
-        GlobalScope.launch(Dispatchers.IO) {
-            while (isNotConnected) {
-                for (result in lockListRecyclerViewAdapter.scanResultList) {
-                    if (result.device.name == lockName) {
-                        connect(result)
-                        isNotConnected = false
-                        break
-                    }
-                }
-            }
-        }
     }
 }

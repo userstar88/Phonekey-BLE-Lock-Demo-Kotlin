@@ -10,17 +10,15 @@ import java.lang.Exception
 class PhonekeyBLELock private constructor(
     private var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
     private var lockName: String? = null,
-    var isLog: Boolean = true
+    var isActive: Boolean = false,
+    var isLog: Boolean = true,
+    private val TAG: String = "PhonekeyBLELock"
 ) {
-
-    private val TAG = "PhonekeyBLELock"
 
     private lateinit var lockType: LockType
     fun getLockType() : LockType {
         return lockType
     }
-
-    var isActive = false
 
     enum class DevicePasswordStatus {
         CORRECT,
@@ -47,6 +45,8 @@ class PhonekeyBLELock private constructor(
         KEYPAD_WITH_READER,  // "3"
         UNDEFINED  // "4"
     }
+
+    class PhonekeyBLELockErrorException(errorMessage: String) : Exception(errorMessage)
 
     data class Builder(
         var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
@@ -93,10 +93,19 @@ class PhonekeyBLELock private constructor(
         }
 
         fun build(): PhonekeyBLELock {
+
+            if (phonekeyBLEHelper == null) {
+                throw PhonekeyBLELockErrorException("PhonekeyBLEHelper is null.")
+            }
+
+            if (lockName == null) {
+                throw PhonekeyBLELockErrorException("Lock name is null.")
+            }
+
             val phonekeyBLELock = PhonekeyBLELock(
                 phonekeyBLEHelper,
                 lockName,
-                if (isLog != null) isLog!! else true
+                isLog ?: true
             )
 
             phonekeyBLELock.getStatus(object : GetStatusListener {
@@ -136,12 +145,12 @@ class PhonekeyBLELock private constructor(
      */
     fun getStatus(listener: GetStatusListener) {
         var data = "0100"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0100
             isActive = receivedData.substring(4, 6) == "01"
 
             data = "0399"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0399
                 val battery = receivedData.substring(6, 8)
                 val version = receivedData.substring(10, 12)
@@ -199,7 +208,7 @@ class PhonekeyBLELock private constructor(
      */
     fun activate(nfcV: NfcV, newDevicePassword: String, listener: ActivateListener) {
         var data = "0501"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0502
             val t1 = receivedData.substring(4)
             try {
@@ -210,7 +219,7 @@ class PhonekeyBLELock private constructor(
                 val nowTime = get_time_8(get_nowtime())
 
                 data = "0507$uid$nowTime"
-                sendDataAndReceive(data) {
+                sendAndReceive(data) {
                     // 0508
 
                     setDevicePassword(t1, ac3, counter, newDevicePassword, listener)
@@ -249,7 +258,7 @@ class PhonekeyBLELock private constructor(
             listener.onFailure(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
         } else {
             var data = "0501"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0502
                 val t1 = receivedData.substring(4)
                 val uid = code.substring(0, 16)
@@ -258,7 +267,7 @@ class PhonekeyBLELock private constructor(
                 val nowTime = get_time_8(get_nowtime())
 
                 data = "0507$uid$nowTime"
-                sendDataAndReceive(data) {
+                sendAndReceive(data) {
                     // 0508
 
                     setDevicePassword(t1, ac3, counter, newDevicePassword, listener)
@@ -302,7 +311,7 @@ class PhonekeyBLELock private constructor(
      */
     fun deactivate(devicePassword: String, listener: DeactivateListener) {
         var data = "0601"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0602
             val t1 = receivedData.substring(4)
             val trimmedDevicePassword = triv.get_triv(
@@ -312,23 +321,20 @@ class PhonekeyBLELock private constructor(
                 "00000000000000000000"
             ).toString()
             data = "0603$trimmedDevicePassword"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0604
                 when (receivedData.substring(4, 5)) {
                     "0" -> listener.onFailure(
-                        DevicePasswordStatus.INCORRECT, receivedData.substring(
-                            5
-                        ).toInt(), -1
+                        DevicePasswordStatus.INCORRECT, receivedData.substring(5).toInt(), -1
                     )
                     "2" -> listener.onFailure(
-                        DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(
-                            5
-                        ).toInt()
+                        DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt()
                     )
                     else -> {
                         data = "99AC"
-                        sendDataAndReceive(data) {
+                        sendAndReceive(data) {
                             // 99AD
+                            isActive = false
                             listener.onSuccess()
                         }
                     }
@@ -377,7 +383,7 @@ class PhonekeyBLELock private constructor(
             Log.i(TAG, "old: $oldPassword,  new: $newPassword")
         }
         var data = "0501"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0502
             val t1 = receivedData.substring(4)
             val trimmedPassword = triv.get_triv(
@@ -388,7 +394,7 @@ class PhonekeyBLELock private constructor(
             ).toString()
 
             data = "0503$trimmedPassword"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0504
 
                 when (receivedData.substring(4, 5)) {
@@ -405,7 +411,7 @@ class PhonekeyBLELock private constructor(
                             newPassword
                         )
                         data = "0505${encryptedNewPasswordArray[0]}${encryptedNewPasswordArray[1]}"
-                        sendDataAndReceive(data) {
+                        sendAndReceive(data) {
                             // 0506
                             listener.onSuccess()
                         }
@@ -433,7 +439,7 @@ class PhonekeyBLELock private constructor(
      */
     fun resetDevicePassword(nfcV: NfcV, newPassword: String, listener: ActivateListener) {
         val data = "0501"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0502
             val t1 = receivedData.substring(4)
             val vData = ustag(nfcV).getVdata(t1)
@@ -462,9 +468,9 @@ class PhonekeyBLELock private constructor(
      * @param counter calculate from NFC tag or QR Code with T1, see the caller
      * @param listener listen the result
      */
-    private fun setDevicePassword(T1: String, ac3: String, counter: String, newPassword: String ,listener: ActivateListener) {
+    private fun setDevicePassword(T1: String, ac3: String, counter: String, newPassword: String, listener: ActivateListener) {
         var data = "0503$ac3$counter"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0504
 
             when (receivedData.substring(4, 5)) {
@@ -472,14 +478,16 @@ class PhonekeyBLELock private constructor(
                 "3" -> listener.onFailure(ActivationCodeStatus.INCORRECT_3_TIMES, 3, receivedData.substring(5, 6).toInt())
                 "7" -> listener.onFailure(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
                 else -> {
-                    Log.i(TAG, "Set new password: $newPassword")
+                    if (isLog) {
+                        Log.i(TAG, "Set new password: $newPassword")
+                    }
                     val encryptedNewPasswordArray = encryptDevicePassword(
                         lockName,
                         T1,
                         newPassword
                     )
                     data = "0505${encryptedNewPasswordArray[0]}${encryptedNewPasswordArray[1]}"
-                    sendDataAndReceive(data) {
+                    sendAndReceive(data) {
                         // 0506
                         listener.onSuccess()
                     }
@@ -532,7 +540,7 @@ class PhonekeyBLELock private constructor(
      */
     private fun checkDevicePassword(password: String, listener: (String) -> Unit) {
         var data = "0601"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0602
             val t1 = receivedData.substring(4)
             val trimmedPassword = triv.get_triv(
@@ -542,7 +550,7 @@ class PhonekeyBLELock private constructor(
                 "00000000000000000000"
             ).toString()
             data = "0603$trimmedPassword"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0604
                 listener(receivedData)
             }
@@ -601,10 +609,10 @@ class PhonekeyBLELock private constructor(
                 "2" -> listener.onFailure(DevicePasswordStatus.INCORRECT_3_TIMES, -1, receivedData.substring(5).toInt())
                 else -> {
                     var data = "0101"
-                    sendDataAndReceive(data) {
+                    sendAndReceive(data) {
                         val keyA = random_value(2, 20)
                         data = "010301$keyA"
-                        sendDataAndReceive(data) { receivedData ->
+                        sendAndReceive(data) { receivedData ->
                             // 0104
                             val keyB = receivedData.substring(6)
                             listener.onSuccess(keyA, keyB)
@@ -647,7 +655,7 @@ class PhonekeyBLELock private constructor(
      */
     fun getT1(listener: (String) -> Unit) {
         val data = "020104"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0202
             val t1 = receivedData.substring(4)
             listener(t1)
@@ -682,7 +690,7 @@ class PhonekeyBLELock private constructor(
      * */
     fun open(ac3: String, listener: OpenListener) {
         val data = "0203$ac3"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0204
             if (receivedData.substring(4, 6) == "01") {
                 val newKeyB = receivedData.substring(6, 26)
@@ -723,7 +731,7 @@ class PhonekeyBLELock private constructor(
      * */
     fun getNewKeyB(listener: GetNewKeyBListener) {
         val data = "02050"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0204 or 0206
             if (receivedData.substring(3, 4) == "4") {
                 listener.onSuccess(receivedData.substring(6))
@@ -744,7 +752,7 @@ class PhonekeyBLELock private constructor(
      */
     fun updateLockKeyB(listener: (String) -> Unit) {
         val data = "020501"
-        sendDataAndReceive(data) { receivedData ->
+        sendAndReceive(data) { receivedData ->
             // 0206
             listener(receivedData.substring(6))
         }
@@ -780,14 +788,14 @@ class PhonekeyBLELock private constructor(
     fun setKeypadPassword(ac3: String, newKeyPadPassword: String, listener: SetKeypadPasswordListener) {
         if (lockType == LockType.KEYPAD_NO_READER || lockType == LockType.KEYPAD_WITH_READER) {
             var data = "0301$ac3"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0302
                 if (receivedData.substring(5, 6) == "0") {
                     listener.onFailure(KeypadError.AC3_ERROR)
                 } else {
                     val encryptedPassword = AES.Encrypt2(AES.parseHexStr2Ascii(newKeyPadPassword + newKeyPadPassword + ac3), AES.parseHexStr2Ascii(ac3 + ac3.substring(0, 12)))
                     data = "0303$encryptedPassword"
-                    sendDataAndReceive(data) {
+                    sendAndReceive(data) {
                         listener.onSuccess()
                     }
                 }
@@ -828,7 +836,7 @@ class PhonekeyBLELock private constructor(
     fun checkKeypadStatus(verificationCode: String, listener: CheckKeypadStatusListener) {
         if (lockType == LockType.KEYPAD_NO_READER || lockType == LockType.KEYPAD_WITH_READER) {
             val data = "0401$verificationCode"
-            sendDataAndReceive(data) { receivedData ->
+            sendAndReceive(data) { receivedData ->
                 // 0402
                 when (val status = receivedData.substring(7, 8)) {
                     "2" -> listener.onFailure(KeypadError.VERIFICATION_CODE_ERROR)
@@ -868,7 +876,7 @@ class PhonekeyBLELock private constructor(
     fun removeKeypadPassword(listener: RemoveKeypadPasswordListener) {
         if (lockType == LockType.KEYPAD_NO_READER || lockType == LockType.KEYPAD_WITH_READER) {
             val data = "040301"
-            sendDataAndReceive(data) {
+            sendAndReceive(data) {
                 // 0404
                 listener.onSuccess()
             }
@@ -878,7 +886,9 @@ class PhonekeyBLELock private constructor(
         }
     }
 
-    private fun sendDataAndReceive(data: String, listener: (String) -> Unit) {
+
+    /*----------------Helper---------------------------------------------------------------------------------------------------------*/
+    private fun sendAndReceive(data: String, listener: (String) -> Unit) {
         checkBLEAndLog(data)
         val dataWithLength = concatStringLength(data)
         phonekeyBLEHelper!!.write(toHexByteArray(dataWithLength)) {

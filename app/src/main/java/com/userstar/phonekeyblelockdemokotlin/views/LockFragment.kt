@@ -276,17 +276,15 @@ class LockFragment : Fragment() {
         }
     }
 
-    private var qrCodeLiveData: MutableLiveData<String>? = null
+    private var qrCodeLiveData: MutableLiveData<String> = MutableLiveData<String>()
     private fun activateByQRCode() {
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(arrayOf(Manifest.permission.CAMERA), 0)
         } else {
             zxing_BarcodeView.visibility = View.VISIBLE
             zxing_BarcodeView.resume()
-            qrCodeLiveData = MutableLiveData<String>().apply {
-                observe(viewLifecycleOwner) { code ->
-                    qrCodeLiveData!!.removeObservers(viewLifecycleOwner)
-                    qrCodeLiveData = null
+            qrCodeLiveData.observe(viewLifecycleOwner) { code ->
+                    qrCodeLiveData.removeObservers(viewLifecycleOwner)
 
                     enterPasswordAlertDialog("Set your device password",
                         PasswordType.LOCK
@@ -311,7 +309,6 @@ class LockFragment : Fragment() {
                             }
                         })
                     }
-                }
             }
         }
     }
