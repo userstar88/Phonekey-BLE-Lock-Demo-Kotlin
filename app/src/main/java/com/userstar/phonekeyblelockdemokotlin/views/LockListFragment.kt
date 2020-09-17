@@ -157,23 +157,17 @@ class LockListFragment : Fragment() {
 
     private fun connect(result: ScanResult) {
         Timber.i("Try to connect: ${result.device.name},  ${result.device.address}")
-        var isPushed = false
-
         BLEHelper.getInstance().connectBLE(
             requireContext(),
-            result.device, {
-                requireActivity().runOnUiThread {
-                    findNavController().navigate(LockListFragmentDirections.actionLockListFragmentToLockFragment(result))
-                    isPushed = true
-                }
-            }, {
-                if (isPushed) {
-                    requireActivity().runOnUiThread {
-                        findNavController().popBackStack()
-                        Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
-                    }
-                }
+            result.device
+        ) {
+            requireActivity().runOnUiThread {
+                findNavController().navigate(
+                    LockListFragmentDirections.actionLockListFragmentToLockFragment(
+                        result
+                    )
+                )
             }
-        )
+        }
     }
 }

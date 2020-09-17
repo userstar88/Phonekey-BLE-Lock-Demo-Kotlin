@@ -78,7 +78,7 @@ class PhonekeyBLELock private constructor(
      *
      *      YY is related info
      * @param listener listen the result
-     * @see StatusGetListener
+     * @see LockStatusGetListener
      */
     fun getLockStatus(listener: LockStatusGetListener) {
         var data = "0100"
@@ -646,7 +646,6 @@ class PhonekeyBLELock private constructor(
                 }
                 listener.onSuccess(newKeyB, secs)
             } else {
-                Log.e(TAG, "AC3 Error")
                 listener.onAC3Error()
             }
         }
@@ -754,17 +753,17 @@ class PhonekeyBLELock private constructor(
 
     interface CheckKeypadStatusListener {
         /**
+         * Called when verification code is wrong or the lock doesn't support this function
+         */
+        fun onFailure(error: KeypadError)
+
+        /**
          * Called when verification code is correct return
          *
          * @param type lock's type
          * @param isOpening lock's status
          * */
         fun onStatusReturn(type: LockType, isOpening: Boolean)
-
-        /**
-         * Called when verification code is wrong or the lock doesn't support this function
-         */
-        fun onFailure(error: KeypadError)
     }
     /**
      * Remove keypad password
@@ -846,16 +845,12 @@ class PhonekeyBLELock private constructor(
         check(phonekeyBLEHelper != null) { "Phonekey BLE helper doesn't set" }
         check(lockName != null ) { "Lock name doesn't set" }
         log("write: (${data.substring(0, 4)})${data.substring(4)}", Log.INFO)
-        if (observer!=null) {
-            observer!!.onWrite(data)
-        }
+        observer?.onWrite(data)
     }
 
     private fun logReceive(result: String) {
         log(" read: (${result.substring(0, 4)})${result.substring(4)}", Log.INFO)
-        if (observer!=null) {
-            observer!!.onReceive(result)
-        }
+        observer?.onReceive(result)
     }
 
     private fun log(message: String, type: Int) {

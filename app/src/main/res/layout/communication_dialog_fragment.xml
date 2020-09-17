@@ -1,10 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#CC222222"
+    android:background="#99000000"
+    tools:ignore="HardcodedText"
     tools:context="com.userstar.phonekeyblelockdemokotlin.views.CommunicationDialogFragment">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -16,37 +18,59 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintHeight_percent="0.4"
-        app:layout_constraintWidth_percent="0.7">
+        app:layout_constraintWidth_percent="0.85">
 
         <TextView
             android:id="@+id/title_TextView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:padding="3dp"
             android:gravity="center"
-            android:text="Function"
+            android:text="Initialization"
             android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintTop_toTopOf="parent" />
 
         <ScrollView
+            android:id="@+id/scrollView"
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            app:layout_constraintBottom_toTopOf="@+id/close_Button"
+            app:layout_constraintBottom_toTopOf="@+id/view"
             app:layout_constraintTop_toBottomOf="@+id/title_TextView">
 
             <TextView
                 android:id="@+id/data_TextView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:textSize="13sp" />
+                android:paddingStart="2dp"
+                android:paddingEnd="2dp"
+                android:textSize="12sp" />
         </ScrollView>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="2dp"
+            android:paddingEnd="2dp"
+            android:text="Communication between Lock and App"
+            android:textColor="@android:color/darker_gray"
+            app:layout_constraintBottom_toBottomOf="@+id/scrollView"
+            app:layout_constraintEnd_toEndOf="@+id/scrollView" />
+
+        <View
+            android:id="@+id/view"
+            android:layout_width="match_parent"
+            android:layout_height="0.5dp"
+            android:background="@android:color/black"
+            app:layout_constraintBottom_toTopOf="@+id/close_Button" />
 
         <Button
             android:id="@+id/close_Button"
             android:layout_width="match_parent"
-            android:layout_height="30dp"
+            android:layout_height="40dp"
             android:background="@android:color/transparent"
             android:text="CLOSE"
+            android:enabled="false"
             app:layout_constraintBottom_toBottomOf="parent" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 </androidx.constraintlayout.widget.ConstraintLayout>

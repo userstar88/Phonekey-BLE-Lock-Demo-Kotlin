@@ -9,6 +9,7 @@ import android.bluetooth.le.ScanSettings.*
 import android.content.Context
 import android.widget.Toast
 import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
+import org.greenrobot.eventbus.EventBus
 import timber.log.Timber
 import java.util.*
 
@@ -81,8 +82,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     fun connectBLE(
         context: Context,
         lock: BluetoothDevice,
-        connectedCallback: ()->Unit,
-        disconnectedCallback: ()->Unit
+        connectedCallback: ()->Unit
     ) {
         bluetoothGatt = lock.connectGatt(context, false, object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
@@ -100,7 +100,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
                     BluetoothProfile.STATE_DISCONNECTED -> {
                         Timber.w("Disconnected from GATT server.")
                         Timber.w("Lock disconnected!!!")
-                        disconnectedCallback()
+                        EventBus.getDefault().post("Disconnected.")
                     }
                 }
             }
@@ -158,7 +158,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         // To prevent no response from lock, a little delay when sending data will be suggested
         Timer().schedule(object : TimerTask() {
             override fun run() {
-                bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
+                bluetoothGatt?.writeCharacteristic(gattCharacteristicWrite!!)
             }
         }, 100)
 //        bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
