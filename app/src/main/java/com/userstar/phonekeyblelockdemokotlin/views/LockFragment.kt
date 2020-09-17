@@ -20,10 +20,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.fragment.findNavController
 import com.journeyapps.barcodescanner.BarcodeView
-import com.squareup.okhttp.Callback
-import com.squareup.okhttp.OkHttpClient
-import com.squareup.okhttp.Request
-import com.squareup.okhttp.Response
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelock.PhonekeyBLELock
 import com.userstar.phonekeyblelock.PhonekeyBLELockObserver
@@ -33,6 +29,7 @@ import kotlinx.android.synthetic.main.lock_fragment.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import okhttp3.*
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -454,17 +451,18 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         // Store KeyA and KeyB and calculate AC3
                         Timber.i("KeyA: $keyA")
                         Timber.i("KeyB: $keyB")
-                        OkHttpClient().newCall(Request.Builder()
+                        OkHttpClient().newCall(
+                            Request.Builder()
                             .url("http://210.65.11.172:8080/demo/Basketball/DetailLattices_Set.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&a=$keyA&b=$keyB")
                             .build())
                             .enqueue(object : Callback {
-                                override fun onFailure(request: Request?, e: IOException?) {
-                                    makeToastAndLog("Save KeyA, KeyB to server ERROR. ${e?.message}", Log.ERROR)
+                                override fun onFailure(call: Call, e: IOException) {
+                                    makeToastAndLog("Save KeyA, KeyB to server ERROR. ${e.message}", Log.ERROR)
                                 }
 
-                                override fun onResponse(response: Response?) {
-                                    if (response!=null) {
-                                        val jsonObject = JSONObject(response.body().string())
+                                override fun onResponse(call: Call, response: Response) {
+                                    if (response.isSuccessful) {
+                                        val jsonObject = JSONObject(response.body!!.string())
                                         Timber.i("response: $jsonObject")
                                         val status = jsonObject.getString("s")
                                         if (status == "01") {
@@ -506,9 +504,9 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         .execute()
                     Timber.i("$response")
 
-                    if (response != null && response.isSuccessful) {
-                        val jsonObject = JSONObject(response.body().string())
-                        response.body().close()
+                    if (response.isSuccessful) {
+                        val jsonObject = JSONObject(response.body!!.string())
+                        response.body?.close()
                         Timber.i("response: $jsonObject")
 
                         try {
@@ -555,11 +553,11 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             .url("http://210.65.11.172:8080/demo/Basketball/Netkey_updatakeyb.jsp?id=uscabpandroid&pw=userstar&lockid=${lockName.substring(3)}&b=$keyB&pk=$pk")
             .build())
             .execute()
-        Timber.i("$response")
-        Timber.i("response: ${JSONObject(response.body().string())}")
-        response.body().close()
 
-        if (response != null && response.isSuccessful) {
+        if (response.isSuccessful) {
+            Timber.i("$response")
+            Timber.i("response: ${JSONObject(response.body!!.string())}")
+            response.body?.close()
             makeToastAndLog("Update server KeyB successfully.", Log.INFO, false)
             phonekeyBLELock.updateLockKeyB {  verificationCode ->
                 requireActivity().getPreferences(Context.MODE_PRIVATE)
@@ -602,9 +600,9 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         .execute()
                     Timber.i("$response")
 
-                    if (response != null && response.isSuccessful) {
-                        val jsonObject = JSONObject(response.body().string())
-                        response.body().close()
+                    if (response.isSuccessful) {
+                        val jsonObject = JSONObject(response.body!!.string())
+                        response.body?.close()
                         Timber.i("response: $jsonObject")
                         val ac3 = jsonObject.getString("ac3")
                         enterPasswordAlertDialog("Set  keypad password",
