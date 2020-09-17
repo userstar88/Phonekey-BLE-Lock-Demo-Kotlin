@@ -155,12 +155,13 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         this.listener = callback
         gattCharacteristicWrite!!.value = data
 
-        // To prevent lock doesn't response, a little delay when sending data will be suggested
+        // To prevent no response from lock, a little delay when sending data will be suggested
         Timer().schedule(object : TimerTask() {
             override fun run() {
                 bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
             }
         }, 100)
+//        bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
     }
 
     fun disConnectBLE() {

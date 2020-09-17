@@ -30,8 +30,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             Timber.plant(ReleaseTree())
         }
-
-        checkPermission()
     }
 
     override fun onResume() {
@@ -50,7 +48,8 @@ class MainActivity : AppCompatActivity() {
                 arrayOf(
                     IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED)
                 ),
-                null)
+                null
+            )
         } else {
             Timber.w("Can't no get NFC adapter")
             Toast.makeText(this, "This lock does not support NFC", Toast.LENGTH_SHORT).show()
@@ -61,11 +60,5 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         val nfcVTag = NfcV.get(intent.getParcelableExtra<Parcelable>(NfcAdapter.EXTRA_TAG) as Tag)
         EventBus.getDefault().post(nfcVTag)
-    }
-
-    private fun checkPermission() {
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), 0)
-        }
     }
 }

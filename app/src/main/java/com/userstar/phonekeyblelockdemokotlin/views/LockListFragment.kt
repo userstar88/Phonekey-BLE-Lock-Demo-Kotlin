@@ -1,5 +1,6 @@
 package com.userstar.phonekeyblelockdemokotlin.views
 
+import android.Manifest
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.os.Bundle
@@ -9,17 +10,21 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelockdemokotlin.R
+import com.userstar.phonekeyblelockdemokotlin.checkPermission
 import kotlinx.android.synthetic.main.lock_list_fragment.*
 import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.*
 import java.util.concurrent.CopyOnWriteArrayList
+
+private const val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
 
 class LockListFragment : Fragment() {
 
@@ -53,41 +58,48 @@ class LockListFragment : Fragment() {
         lockListRecyclerViewAdapter.notifyDataSetChanged()
 
         start_scan_Button.setOnClickListener {
-            if (BLEHelper.getInstance().isScanning) {
-                Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
-            } else {
-                BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
-                    override fun onScanFailed(errorCode: Int) {
-                        super.onScanFailed(errorCode)
-                        Timber.i("failed: $errorCode")
-                    }
+            checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.ACCESS_FINE_LOCATION) { isGranted ->
+                if (isGranted) {
+                    if (BLEHelper.getInstance().isScanning) {
+                        Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
+                    } else {
+                        BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+                            override fun onScanFailed(errorCode: Int) {
+                                super.onScanFailed(errorCode)
+                                Timber.i("failed: $errorCode")
+                            }
 
-                    override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                        super.onScanResult(callbackType, result)
-                        if (result != null && result.device.name!=null) {
-                            Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
-                            var isNewDevice = true
-                            for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
-                                if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                    lockListRecyclerViewAdapter.updateRssi(position, result)
-                                    isNewDevice = false
-                                    break
+                            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                                super.onScanResult(callbackType, result)
+                                if (result != null && result.device.name!=null) {
+                                    Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
+                                    var isNewDevice = true
+                                    for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
+                                        if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                            lockListRecyclerViewAdapter.updateRssi(position, result)
+                                            isNewDevice = false
+                                            break
+                                        }
+                                    }
+                                    if (isNewDevice) {
+                                        // Add new locks
+                                        lockListRecyclerViewAdapter.updateList(result)
+                                    }
                                 }
                             }
-                            if (isNewDevice) {
-                                // Add new locks
-                                lockListRecyclerViewAdapter.updateList(result)
-                            }
-                        }
-                    }
 
-                    override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                        super.onBatchScanResults(results)
-                        Timber.i(results.toString())
+                            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
+                                super.onBatchScanResults(results)
+                                Timber.i(results.toString())
+                            }
+                        })
                     }
-                })
+                } else {
+                    Toast.makeText(requireContext(), "Lack of location accessing permission.", Toast.LENGTH_LONG).show()
+                }
             }
         }
+
         start_scan_Button.setOnLongClickListener {
             isAutoConnect = true
             start_scan_Button.performClick()
@@ -96,7 +108,6 @@ class LockListFragment : Fragment() {
     }
 
     private var isAutoConnect = false
-    private val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
     inner class LockListRecyclerViewAdapter : RecyclerView.Adapter<LockListRecyclerViewAdapter.ViewHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) =
@@ -145,29 +156,24 @@ class LockListFragment : Fragment() {
     }
 
     private fun connect(result: ScanResult) {
-
         Timber.i("Try to connect: ${result.device.name},  ${result.device.address}")
         var isPushed = false
-        val callbackConnected = {
-            val destination =
-                LockListFragmentDirections.actionLockListFragmentToLockFragment(result)
-            findNavController().navigate(destination)
-            isPushed = true
-        }
-
-        val callbackDisconnected = {
-            if (isPushed) {
-                findNavController().popBackStack()
-                requireActivity().runOnUiThread {
-                    Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
 
         BLEHelper.getInstance().connectBLE(
             requireContext(),
-            result.device,
-            callbackConnected,
-            callbackDisconnected)
+            result.device, {
+                requireActivity().runOnUiThread {
+                    findNavController().navigate(LockListFragmentDirections.actionLockListFragmentToLockFragment(result))
+                    isPushed = true
+                }
+            }, {
+                if (isPushed) {
+                    requireActivity().runOnUiThread {
+                        findNavController().popBackStack()
+                        Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
+        )
     }
 }

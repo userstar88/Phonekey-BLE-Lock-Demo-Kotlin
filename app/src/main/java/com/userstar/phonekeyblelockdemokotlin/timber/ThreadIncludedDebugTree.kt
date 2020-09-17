@@ -9,10 +9,6 @@ open class ThreadIncludedDebugTree : Timber.DebugTree() {
         message: String,
         t: Throwable?
     ) {
-        var tag = tag
-        if (tag != null) {
-            tag = "$tag"
-        }
         super.log(priority, tag, message, t)
     }
 
