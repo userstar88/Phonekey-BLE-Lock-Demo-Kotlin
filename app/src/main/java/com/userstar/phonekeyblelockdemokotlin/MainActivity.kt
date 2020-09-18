@@ -71,28 +71,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun runUpdate() {
-        val file = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/" + "OQRScanner" + ".apk")
-        Updater(this).apply {
-            auto(file, object : ProgressListener {
-                lateinit var dialog: AlertDialog
-                override fun onDownloading(percentage: Long) {
-                    GlobalScope.launch(Dispatchers.Main) {
-                        dialog = AlertDialog.Builder(this@MainActivity)
-                            .setView(R.layout.progress_dialog)
-                            .setCancelable(false)
-                            .show()
-                    }
-                }
-
-                override fun onDone() {
-
-                }
-
-                override fun onFinished(file: File) {
-                    dialog.dismiss()
-                    startInstallIntent(this@MainActivity, file)
-                }
-            })
-        }
+        Updater(this).auto()
     }
 }

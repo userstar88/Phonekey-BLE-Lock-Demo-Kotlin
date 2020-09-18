@@ -18,6 +18,7 @@ import com.userstar.phonekeyblelockdemokotlin.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import timber.log.Timber
 
 @SuppressLint("SetTextI18n")
 class CommunicationDialogFragment : DialogFragment() {
@@ -41,8 +42,8 @@ class CommunicationDialogFragment : DialogFragment() {
         titleTextView = view.findViewById(R.id.title_TextView)
         dataTextView = view.findViewById(R.id.data_TextView)
         view.findViewById<Button>(R.id.close_Button).setOnClickListener {
-            isShowing = false
             dialog?.hide()
+            isShowing = false
             dataTextView.text = ""
             if (isDisconnected) {
                 findNavController().popBackStack()
@@ -53,8 +54,8 @@ class CommunicationDialogFragment : DialogFragment() {
         return view
     }
 
-    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onViewCreated(view, savedInstanceState)
+    override fun onResume() {
+        super.onResume()
         didCreatedCallback()
     }
 
@@ -64,15 +65,16 @@ class CommunicationDialogFragment : DialogFragment() {
         this.didCreatedCallback = didCreatedCallback
         this.manager = manager
         show(this.manager, "")
+        isShowing = true
     }
 
-    public var isShowing = false
+    var isShowing = false
     fun show(title: String) {
         GlobalScope.launch(Dispatchers.Main) {
             closeButton.isEnabled = false
             titleTextView.text = title
-            isShowing = true
             dialog?.show()
+            isShowing = true
         }
     }
 

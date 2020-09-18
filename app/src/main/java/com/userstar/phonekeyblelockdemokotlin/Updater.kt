@@ -1,15 +1,21 @@
 package com.userstar.phonekeyblelockdemokotlin
 
 
+import android.annotation.SuppressLint
 import android.app.AlertDialog
-import android.app.Dialog
 import android.app.DownloadManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.res.Resources.getSystem
 import android.net.Uri
 import android.os.Build
+import android.os.Environment
+import android.view.Gravity
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
 import androidx.core.content.FileProvider
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
@@ -22,18 +28,65 @@ import timber.log.Timber
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
-import java.lang.Exception
 
 
 class UpdaterFailedException(message: String) : Exception(message)
 
+@SuppressLint("SetTextI18n")
 class Updater(
     private val context: Context
 ) {
+    fun auto() {
+        loadVersionInfo { info ->
+            val serverVersion = info.version.replace(".", "")
+            val currentVersion = BuildConfig.VERSION_NAME.replace(".", "")
+            Timber.i("Server: ${info.version}, current: ${BuildConfig.VERSION_NAME}")
+            if (serverVersion > currentVersion) {
+                GlobalScope.launch(Dispatchers.Main) {
+                    AlertDialog.Builder(context)
+                        .setMessage("New version discovered: ${info.version}\nDo update?")
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton("Yes") { _, _ ->
+                            val file = File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS).toString() + "/${info.appName}.apk")
+                            downloadApk(info, file, object : ProgressListener {
+                                lateinit var dialog: AlertDialog
+                                lateinit var downloadingTextView: TextView
+                                override fun onStart() {
+                                    dialog = buildDownloadingIndicatorDialog()
+                                    GlobalScope.launch(Dispatchers.Main) {
+                                        dialog.show()
+                                        downloadingTextView = dialog.findViewById(0)
+                                    }
+                                }
+
+                                override fun onDownloading(percentage: Long) {
+                                    Timber.i("$percentage%")
+                                    GlobalScope.launch(Dispatchers.Main) {
+                                        downloadingTextView.text = "Downloading... $percentage%"
+                                    }
+                                }
+
+                                override fun onFinish(file: File) {
+                                    GlobalScope.launch(Dispatchers.Main) {
+                                        dialog.dismiss()
+                                        startInstallIntent(context, file)
+                                    }
+                                }
+                            })
+                        }
+                        .setCancelable(false)
+                        .show()
+                }
+            } else {
+                Timber.i("No need to update.")
+            }
+        }
+    }
+
     fun loadVersionInfo(onSuccess: ((VersionInfo) -> Unit)) {
         OkHttpClient().newCall(
             Request.Builder()
-                .url( "https://f3b85ac3d0c5.ngrok.io/phonekeydemo/version_info.json")
+                .url("https://f3b85ac3d0c5.ngrok.io/phonekeydemo/version_info.json")
                 .build()
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
@@ -59,22 +112,25 @@ class Updater(
     }
 
     fun downloadApk(info: VersionInfo, file: File, listener: ProgressListener) {
-        OkHttpClient.Builder().run {
-            addNetworkInterceptor { chain ->
+        val call = OkHttpClient.Builder()
+            .addNetworkInterceptor { chain ->
                 val originalResponse: Response = chain.proceed(chain.request())
                 originalResponse.newBuilder()
                     .body(ProgressResponseBody(originalResponse.body!!, listener))
                     .build()
             }
-            build()
-        }.newCall(Request.Builder()
-            .url(info.uri)
             .build()
-        ).enqueue(object : Callback {
+            .newCall(Request.Builder()
+                .url(info.uri)
+                .build()
+            )
+        listener.onStart()
+        call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Timber.e("Request failed.")
                 throw UpdaterFailedException("IOException: ${e.message}")
             }
+
             override fun onResponse(call: Call, response: Response) {
                 if (response.code != 200) {
                     Timber.e("Request failed.")
@@ -91,34 +147,11 @@ class Updater(
                         fileOutputStream.write(byteArray)
                         fileOutputStream.close()
                         Timber.i("File saved.")
-                        listener.onFinished(file)
+                        listener.onFinish(file)
                     }
                 }
             }
         })
-    }
-
-    fun auto(file: File, listener: ProgressListener) {
-        loadVersionInfo { info ->
-            listener.onDownloading(5)
-            val serverVersion = info.version.replace(".", "")
-            val currentVersion = BuildConfig.VERSION_NAME.replace(".", "")
-            Timber.i("Server: ${info.version}, current: ${BuildConfig.VERSION_NAME}")
-            if (serverVersion > currentVersion) {
-                GlobalScope.launch(Dispatchers.Main) {
-                    val dialog = AlertDialog.Builder(context)
-                        .setMessage("Found new version ${info.version} .\nUpdate?")
-                        .setNegativeButton("Cancel", null)
-                        .setPositiveButton("Yes") { _, _ ->
-                            downloadApk(info, file, listener)
-                        }
-                        .setCancelable(false)
-                        .show()
-                }
-            } else {
-                Timber.i("No need to update.")
-            }
-        }
     }
 
     fun downloadByDownloadManager(info: VersionInfo, file: File, onFinished: () -> Unit) {
@@ -165,20 +198,50 @@ class Updater(
             }
         })
     }
+
+    private fun buildDownloadingIndicatorDialog() : AlertDialog {
+        val parent = LinearLayout(context)
+        parent.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        parent.gravity = Gravity.CENTER_HORIZONTAL
+        parent.orientation = LinearLayout.VERTICAL
+
+        val progressBar = ProgressBar(context)
+        val progressBarLayoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        progressBarLayoutParams.setMargins(0.px, 10.px, 0.px, 0.px)
+        progressBarLayoutParams.weight = 2F
+        progressBar.layoutParams = progressBarLayoutParams
+        parent.addView(progressBar)
+
+        val textView = TextView(context)
+        textView.id = 0
+        textView.text = "Downloading... 0%"
+        val textViewLayoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+        textViewLayoutParams.setMargins(0.px, 0.px, 0.px, 10.px)
+        textView.layoutParams = textViewLayoutParams
+        parent.addView(textView)
+
+        return AlertDialog.Builder(context)
+            .setView(parent)
+            .setCancelable(false)
+            .create()
+    }
+
+    private val Int.dp: Int get() = (this / getSystem().displayMetrics.density).toInt()
+    private val Int.px: Int get() = (this * getSystem().displayMetrics.density).toInt()
 }
 
 
 data class VersionInfo(
     @SerializedName("appName") val appName: String,
     @SerializedName("version") val version: String,
-    @SerializedName("force")  val force: Boolean,
+    @SerializedName("force") val force: Boolean,
     @SerializedName("uri") val uri: String
 )
 
 interface ProgressListener {
+    fun onStart()
     fun onDownloading(percentage: Long)
-    fun onDone()
-    fun onFinished(file: File)
+    fun onFinish(file: File)
 }
 
 private class ProgressResponseBody(
@@ -207,9 +270,7 @@ private class ProgressResponseBody(
                 // read() returns the number of bytes read, or -1 if this source is exhausted.
                 totalBytesRead += if (bytesRead != -1L) bytesRead else 0
                 if (bytesRead != -1L) {
-                    progressListener.onDownloading(((totalBytesRead*100)/responseBody.contentLength()))
-                } else {
-                    progressListener.onDone()
+                    progressListener.onDownloading(((totalBytesRead * 100) / responseBody.contentLength()))
                 }
                 return bytesRead
             }
