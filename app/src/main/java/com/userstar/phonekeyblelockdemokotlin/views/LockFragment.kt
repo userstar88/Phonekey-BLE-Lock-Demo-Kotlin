@@ -674,8 +674,8 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         communicationDialogFragment?.addLine("APP  -> Lock : $data")
     }
 
-    override fun onReceive(result: String) {
-        communicationDialogFragment?.addLine("Lock -> APP  : $result")
+    override fun onReceive(data: String) {
+        communicationDialogFragment?.addLine("Lock -> APP  : $data")
     }
 
     enum class PasswordType {

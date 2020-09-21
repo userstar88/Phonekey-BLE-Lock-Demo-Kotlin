@@ -11,7 +11,7 @@ typealias onReadyListener = (isActive: Boolean, type: PhonekeyBLELock.LockType, 
 
 interface PhonekeyBLELockObserver {
     fun onWrite(data: String)
-    fun onReceive(result: String)
+    fun onReceive(data: String)
 }
 
 @SuppressLint("LogNotTimber", "SimpleDateFormat", "DefaultLocale")
@@ -303,7 +303,7 @@ class PhonekeyBLELock private constructor(
     }
     /**
      * Change device password by entering the old password
-     * 1. Write 0501 to get T1, which will receive with 0502XXXXXXXXXXXXXXXXXXXX
+     * 1. Write 0501 to get T1 and receive 0502 with XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
      *
      * 2. Use T1 to encrypt old password, and write to lock to verify
@@ -317,14 +317,14 @@ class PhonekeyBLELock private constructor(
      *
      * 3. Encrypted new password
      *   @see encryptDevicePassword
-     *    And Write 0505 with encrypted new password, and receive 0506 to check procedure is done
+     *    And write 0505 with encrypted new password, receive 0506 to check procedure is done
      *
      * @param oldPassword original device password, set at activation
      * @param newPassword new device password
      * @param listener listen the result
      * */
     fun changeDevicePassword(oldPassword: String, newPassword: String, listener: ChangeDevicePasswordListener) {
-        log("old: $oldPassword,  new: $newPassword", Log.INFO)
+//        log("old: $oldPassword,  new: $newPassword", Log.INFO)
         var data = "0501"
         sendAndReceive(data) { receivedDataString ->
             // 0502
@@ -407,8 +407,8 @@ class PhonekeyBLELock private constructor(
      *    And Write 0505 with encrypted new password, and receive 0506 to check procedure is done
      *
      * @param T1 get from lock
-     * @param ac3 calculate from NFC tag or QR Code with T1, see the caller
-     * @param counter calculate from NFC tag or QR Code with T1, see the caller
+     * @param ac3 calculated from NFC tag or QR Code with T1, see the caller
+     * @param counter calculated from NFC tag or QR Code with T1, see the caller
      * @param password new device password
      * @param listener listen the result
      */
@@ -422,8 +422,8 @@ class PhonekeyBLELock private constructor(
                 "3" -> listener.onFailure(ActivationCodeStatus.INCORRECT_3_TIMES, 3, receivedDataString.substring(5, 6).toInt())
                 "7" -> listener.onFailure(ActivationCodeStatus.LENGTH_ERROR, -1, -1)
                 else -> {
-                    log("Activation code is correct.", Log.INFO)
-                    log("Set new password: $password", Log.INFO)
+//                    log("Activation code is correct.", Log.INFO)
+//                    log("Set new password: $password", Log.INFO)
 
                     val encryptedNewPasswordArray = encryptDevicePassword(
                         lockName,
