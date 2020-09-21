@@ -11,7 +11,7 @@ typealias onReadyListener = (isActive: Boolean, type: PhonekeyBLELock.LockType, 
 
 interface PhonekeyBLELockObserver {
     fun onWrite(data: String)
-    fun onReceive(data: String)
+    fun onRead(data: String)
 }
 
 @SuppressLint("LogNotTimber", "SimpleDateFormat", "DefaultLocale")
@@ -394,8 +394,8 @@ class PhonekeyBLELock private constructor(
     }
 
     /**
-     * Check the correctness of NFC tag or QR Code, callback on failure or set new password and callback on success
-     * 1. Write 0503 with AC3 + counter + activation way(01), and will receive 0504XY to check AC3's correctness
+     * Check the correctness of NFC tag or QR Code, callback on failure or set a new password and callback on success
+     * 1. Write 0503 with AC3 + counter + activation way(01), and receive 0504XY to check AC3's correctness
      *      XY == 00 -> correct
      *      X == 1 -> AC3 is incorrect, Y means how many times incorrect AC3 have been sent
      *      X == 3 -> Already try three times with wrong AC3, Y means need to wait how many minutes
@@ -470,7 +470,7 @@ class PhonekeyBLELock private constructor(
     }
 
     /**
-     * 1. Write 0601 to get T1, read T1 from 0602XXXXXXXXXXXXXXXXXXXX
+     * 1. Write 0601 to get T1 and read T1 from 0602XXXXXXXXXXXXXXXXXXXX
      *      XXXXXXXXXXXXXXXXXXXX is T1
      *
      * 2. Use T1 to encrypted the device password in specific format
@@ -480,7 +480,7 @@ class PhonekeyBLELock private constructor(
      *      X == 1 -> device password is correct
      *      X == 2 -> device password is already incorrect 3 times, need to wait Y minutes
      *
-     * @param password password want to check
+     * @param password the password want to check
      * @param listener listen the result
      */
     private fun checkDevicePassword(password: String, listener: (String) -> Unit) {
@@ -523,7 +523,7 @@ class PhonekeyBLELock private constructor(
     }
     /**
      * Establish key
-     * This function primarily get KeyA and KeyB
+     * This function is primarily used to get KeyA and KeyB
      * With KeyA and KeyB, AC3 can be calculated
      * Opening lock and set keypad password will need this AC3
      * If KeyA and KeyB are properly stored, this function only need to be execute once, until the AC3 is not working
@@ -629,7 +629,7 @@ class PhonekeyBLELock private constructor(
      *      XX == "00" -> AC3 is incorrect, there won't be YYYYYYYYYYYYYYYYYYYY,
      *      XX == "01" -> AC3 is correct, open successfully, YYYYYYYYYYYYYYYYYYYY is new KeyB, ZZ means to wait ZZ seconds
      *
-     * @param ac3 Calculate by T1(from getT1()), KeyA and KeyB(from successfully established key)
+     * @param ac3 Calculated by T1(from getT1()), KeyA and KeyB(from successfully established key)
      * @see getT1
      * @param listener listen the result
      * */
@@ -724,7 +724,7 @@ class PhonekeyBLELock private constructor(
      *   @see AES.parseHexStr2Ascii
      *    Write 0303 with encrypted keypad's password
      *
-     * @param ac3 calculate with 00000000000000000000(T1) and KeyA, KeyB
+     * @param ac3 calculated with 00000000000000000000(T1) and KeyA, KeyB
      * @param newKeypadPassword new keypad password
      * @param listener listen the result
      * @see SetKeypadPasswordListener
@@ -811,7 +811,7 @@ class PhonekeyBLELock private constructor(
     }
     /**
      * After checkKeypadStatus, removing keypad's password is available
-     * 1. Write 040301 and will receive 0404 as finish
+     * 1. Write 040301 and receive 0404 as finish
      *
      * @param listener listen the result
      * @see RemoveKeypadPasswordListener
@@ -832,7 +832,7 @@ class PhonekeyBLELock private constructor(
 
     /*----------------Helper---------------------------------------------------------------------------------------------------------*/
     private fun sendAndReceive(data: String, listener: (String) -> Unit) {
-        checkBLEAndLog(data)
+        logWrite(data)
         val dataWithLength = concatStringLength(data)
         phonekeyBLEHelper!!.write(toHexByteArray(dataWithLength)) { bluetoothGatt ->
             val receiveData = (bluetoothGatt.value as ByteArray).toHex().toUpperCase()
@@ -841,16 +841,14 @@ class PhonekeyBLELock private constructor(
         }
     }
 
-    private fun checkBLEAndLog(data: String) {
-        check(phonekeyBLEHelper != null) { "Phonekey BLE helper doesn't set" }
-        check(lockName != null ) { "Lock name doesn't set" }
+    private fun logWrite(data: String) {
         log("write: (${data.substring(0, 4)})${data.substring(4)}", Log.INFO)
         observer?.onWrite(data)
     }
 
     private fun logReceive(result: String) {
         log(" read: (${result.substring(0, 4)})${result.substring(4)}", Log.INFO)
-        observer?.onReceive(result)
+        observer?.onRead(result)
     }
 
     private fun log(message: String, type: Int) {

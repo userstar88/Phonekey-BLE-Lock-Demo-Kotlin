@@ -75,7 +75,13 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         val view = inflater.inflate(R.layout.lock_fragment, container, false)
 
         view.findViewById<ImageButton>(R.id.update_button).setOnClickListener { updateLockStatus() }
-        view.findViewById<Button>(R.id.activate_by_qr_code_Button).setOnClickListener { checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.CAMERA) { activateByQRCode() } }
+        view.findViewById<Button>(R.id.activate_by_qr_code_Button).setOnClickListener {
+            checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.CAMERA) { isGranted ->
+                if (isGranted) {
+                    activateByQRCode()
+                }
+            }
+        }
         view.findViewById<Button>(R.id.activate_by_nfc_Button).setOnClickListener { activateByNFC() }
         view.findViewById<Button>(R.id.deactivate_Button).setOnClickListener { deactivate() }
         view.findViewById<Button>(R.id.check_device_password_Button).setOnClickListener { checkDevicePassword() }
@@ -474,7 +480,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                             })
                     }
                 })
-
             }
         }
     }
@@ -484,7 +489,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
      * Or there are not KeyA and KeyB to calculate AC3
      *
      * In this example, we save KeyA and KeyB on ours Userstar server
-     *
      */
     private var canOpen = true
     private var secs = 0
@@ -674,7 +678,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         communicationDialogFragment?.addLine("APP  -> Lock : $data")
     }
 
-    override fun onReceive(data: String) {
+    override fun onRead(data: String) {
         communicationDialogFragment?.addLine("Lock -> APP  : $data")
     }
 
@@ -719,13 +723,12 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
 
     private fun getAlertAlertDialogEditView(editText: EditText, type: PasswordType): View {
         val linearLayout = LinearLayout(requireContext())
-        val params = LinearLayout.LayoutParams(
+        linearLayout.orientation = LinearLayout.VERTICAL
+        linearLayout.gravity = Gravity.CENTER_HORIZONTAL
+        linearLayout.layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
             LinearLayout.LayoutParams.MATCH_PARENT
         )
-        linearLayout.orientation = LinearLayout.VERTICAL
-        linearLayout.layoutParams = params
-        linearLayout.gravity = Gravity.CENTER_HORIZONTAL
 
         val layoutParams = LinearLayout.LayoutParams(
             LinearLayout.LayoutParams.MATCH_PARENT,
