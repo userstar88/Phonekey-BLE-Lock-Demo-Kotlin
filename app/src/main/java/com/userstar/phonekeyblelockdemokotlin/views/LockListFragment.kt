@@ -63,7 +63,7 @@ class LockListFragment : Fragment() {
                     if (BLEHelper.getInstance().isScanning) {
                         Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
                     } else {
-                        BLEHelper.getInstance().startScan(requireContext(), null, object : ScanCallback() {
+                        BLEHelper.getInstance().startScan(requireContext(), arrayOf(), object : ScanCallback() {
                             override fun onScanFailed(errorCode: Int) {
                                 super.onScanFailed(errorCode)
                                 Timber.i("failed: $errorCode")
@@ -86,11 +86,6 @@ class LockListFragment : Fragment() {
                                         lockListRecyclerViewAdapter.updateList(result)
                                     }
                                 }
-                            }
-
-                            override fun onBatchScanResults(results: MutableList<ScanResult>?) {
-                                super.onBatchScanResults(results)
-                                Timber.i(results.toString())
                             }
                         })
                     }
