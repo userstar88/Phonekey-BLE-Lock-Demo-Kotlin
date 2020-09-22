@@ -7,13 +7,13 @@ apply plugin: "androidx.navigation.safeargs.kotlin"
 android {
     signingConfigs {
         release {
-            storeFile file('/Users/yhw/Desktop/Projects/PhonekeyBLELockDemoKotlin/keystore/keystore')
+            storeFile file("$rootDir/keystore/keystore")
             storePassword 'userstar897'
             keyAlias 'key0'
             keyPassword 'userstar897'
         }
         debug {
-            storeFile file('/Users/yhw/Desktop/Projects/PhonekeyBLELockDemoKotlin/keystore/keystore')
+            storeFile file("$rootDir/keystore/keystore")
             storePassword 'userstar897'
             keyAlias 'key0'
             keyPassword 'userstar897'
