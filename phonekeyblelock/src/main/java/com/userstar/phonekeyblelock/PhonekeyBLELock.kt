@@ -865,11 +865,11 @@ class PhonekeyBLELock private constructor(
     }
 
     data class Builder(
-        var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
-        var lockName: String? = null,
-        var isLog: Boolean? = null,
-        var observer: PhonekeyBLELockObserver? = null,
-        var listener: onReadyListener? = null
+        private var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
+        private var lockName: String? = null,
+        private var isLog: Boolean? = null,
+        private var observer: PhonekeyBLELockObserver? = null,
+        private var listener: onReadyListener? = null
     ) {
         /**
          * Set the BLE helper so that this class can write and read bluetooth data.

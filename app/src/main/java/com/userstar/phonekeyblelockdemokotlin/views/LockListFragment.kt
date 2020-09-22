@@ -158,9 +158,7 @@ class LockListFragment : Fragment() {
         ) {
             requireActivity().runOnUiThread {
                 findNavController().navigate(
-                    LockListFragmentDirections.actionLockListFragmentToLockFragment(
-                        result
-                    )
+                    LockListFragmentDirections.actionLockListFragmentToLockFragment(result)
                 )
             }
         }
