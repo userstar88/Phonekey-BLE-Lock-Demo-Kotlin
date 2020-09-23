@@ -24,7 +24,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         @JvmStatic
         private var instance: BLEHelper? = null
         fun getInstance() : BLEHelper {
-            if (instance ==null) {
+            if (instance == null) {
                 instance = BLEHelper()
             }
             return instance as BLEHelper
@@ -46,8 +46,7 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
     ) {
         adapter = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
         if (adapter==null || !adapter!!.isEnabled) {
-            Toast.makeText(context, "THIS DEVICE IS NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
-            return
+            Toast.makeText(context, "THIS DEVICE DOES NOT SUPPORT BLE!!!", Toast.LENGTH_LONG).show()
         } else {
             isScanning = true
             bluetoothLeScanner = adapter!!.bluetoothLeScanner

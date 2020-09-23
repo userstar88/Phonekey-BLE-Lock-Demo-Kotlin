@@ -59,7 +59,7 @@
             android:layout_height="wrap_content"
             android:paddingStart="2dp"
             android:paddingEnd="2dp"
-            android:text="Communication between Lock and App"
+            android:text="Communication between App and Lock"
             android:textColor="@android:color/darker_gray"
             app:layout_constraintBottom_toBottomOf="@+id/scrollView"
             app:layout_constraintEnd_toEndOf="@+id/scrollView" />

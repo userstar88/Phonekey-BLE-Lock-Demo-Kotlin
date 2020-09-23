@@ -91,18 +91,18 @@ class Updater(
         ).enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Timber.e("Request failed.")
-                throw UpdaterFailedException("IOException: ${e.message}")
+                Timber.e("IOException: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (response.code != 200) {
                     Timber.e("Request failed.")
-                    throw UpdaterFailedException("Loading version info HttpException: response code: ${response.code}, message: ${response.message}")
+                    Timber.e("Loading version info HttpException: response code: ${response.code}, message: ${response.message}")
                 } else {
                     val resultString = response.body?.string()
                     response.body?.close()
                     if (resultString == null) {
-                        throw UpdaterFailedException("Loading version info HttpException: response code: ${response.code}, message: ${response.message}")
+                        Timber.e("Loading version info HttpException: response code: ${response.code}, message: ${response.message}")
                     } else {
                         onSuccess(Gson().fromJson(resultString, VersionInfo::class.java))
                     }
@@ -128,18 +128,18 @@ class Updater(
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) {
                 Timber.e("Request failed.")
-                throw UpdaterFailedException("IOException: ${e.message}")
+                Timber.e("IOException: ${e.message}")
             }
 
             override fun onResponse(call: Call, response: Response) {
                 if (response.code != 200) {
                     Timber.e("Request failed.")
-                    throw UpdaterFailedException("Downloading apk HttpException: response code: ${response.code}, message: ${response.message}")
+                    Timber.e("Downloading apk HttpException: response code: ${response.code}, message: ${response.message}")
                 } else {
                     val byteArray = response.body?.bytes()
                     response.body?.close()
                     if (byteArray == null) {
-                        throw UpdaterFailedException("Downloading apk HttpException: response code: ${response.code}, message: ${response.message}")
+                        Timber.e("Downloading apk HttpException: response code: ${response.code}, message: ${response.message}")
                     } else {
                         Timber.i("Download completed.")
                         if (file.exists()) file.delete()

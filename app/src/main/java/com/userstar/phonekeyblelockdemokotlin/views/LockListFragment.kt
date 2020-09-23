@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.DividerItemDecoration
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
+import com.userstar.phonekeyblelockdemokotlin.BuildConfig
 import com.userstar.phonekeyblelockdemokotlin.R
 import com.userstar.phonekeyblelockdemokotlin.checkPermission
 import kotlinx.android.synthetic.main.lock_list_fragment.*
@@ -47,6 +48,8 @@ class LockListFragment : Fragment() {
 
         lockListRecyclerViewAdapter = LockListRecyclerViewAdapter()
         lockListRecyclerView.adapter = lockListRecyclerViewAdapter
+
+        view.findViewById<TextView>(R.id.app_version_TextView).text =  BuildConfig.VERSION_NAME
 
         return view
     }

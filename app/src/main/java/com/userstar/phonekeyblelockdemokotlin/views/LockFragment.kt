@@ -168,11 +168,14 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         this.isActive = isActive
         this.lockType = type
 
-        lock_type_TextView.text = "Lock Type: ${this.lockType}"
-        is_active_TextView.text = "isActive: ${this.isActive}"
-        battery_TextView.text = "Battery: $battery"
-        version_TextView.text = "Version: $version"
-        open_close_status_TextView.text = "isOpening: $isOpening"
+        GlobalScope.launch(Dispatchers.Main) {
+            lock_type_TextView.text = "Lock Type: ${this@LockFragment.lockType}"
+            is_active_TextView.text = "isActive: ${this@LockFragment.isActive}"
+            battery_TextView.text = "Battery: $battery"
+            version_TextView.text = "Version: $version"
+            open_close_status_TextView.text = "isOpening: $isOpening"
+        }
+
         Timber.i("isShowing: ${communicationDialogFragment?.isShowing}")
         log("LockType: ${this.lockType}, isActive: ${this.isActive}, battery: $battery, version: $version, isOpening: $isOpening", Log.INFO, true)
     }
@@ -675,11 +678,11 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     }
 
     override fun onWrite(data: String) {
-        communicationDialogFragment?.addLine("APP  -> Lock : $data")
+        communicationDialogFragment?.addLine("APP  -> $data")
     }
 
     override fun onRead(data: String) {
-        communicationDialogFragment?.addLine("Lock -> APP  : $data")
+        communicationDialogFragment?.addLine("Lock -> $data")
     }
 
     enum class PasswordType {
