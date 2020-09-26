@@ -18,12 +18,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelockdemokotlin.BuildConfig
 import com.userstar.phonekeyblelockdemokotlin.R
-import com.userstar.phonekeyblelockdemokotlin.checkPermission
+import com.userstar.phonekeyblelockdemokotlin.Utility.checkPermission
 import kotlinx.android.synthetic.main.lock_list_fragment.*
-import kotlinx.coroutines.*
 import timber.log.Timber
 import java.util.*
-import java.util.concurrent.CopyOnWriteArrayList
 
 private const val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
 
@@ -121,7 +119,7 @@ class LockListFragment : Fragment() {
         }
 
         fun updateRssi(position: Int, result: ScanResult) {
-            Timber.i("update ${result.device.name} rssi: ${result.rssi} ")
+            Timber.i("update ${result.device.name} rssi: ${result.rssi}")
             scanResultList[position] = result
             requireActivity().runOnUiThread {
                 notifyItemChanged(position)

@@ -1,4 +1,4 @@
-package com.userstar.phonekeyblelockdemokotlin
+package com.userstar.phonekeyblelockdemokotlin.Utility
 
 import android.Manifest
 import android.content.DialogInterface

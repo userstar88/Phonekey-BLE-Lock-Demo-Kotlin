@@ -16,7 +16,7 @@ interface PhonekeyBLELockObserver {
 
 @SuppressLint("LogNotTimber", "SimpleDateFormat", "DefaultLocale")
 class PhonekeyBLELock private constructor(
-    private var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
+    private var phonekeyBLEHelper: PhonekeyBLEHelper? = null,
     private var lockName: String? = null,
     private var observer: PhonekeyBLELockObserver? = null,
     private var active: Boolean? = null,
@@ -834,8 +834,8 @@ class PhonekeyBLELock private constructor(
     private fun sendAndReceive(data: String, listener: (String) -> Unit) {
         logWrite(data)
         val dataWithLength = concatStringLength(data)
-        phonekeyBLEHelper!!.write(toHexByteArray(dataWithLength)) { bluetoothGatt ->
-            val receiveData = (bluetoothGatt.value as ByteArray).toHex().toUpperCase()
+        phonekeyBLEHelper!!.write(toHexByteArray(dataWithLength)) { byteArray ->
+            val receiveData = byteArray.toHex().toUpperCase()
             logReceive(receiveData)
             listener(receiveData)
         }
@@ -865,7 +865,7 @@ class PhonekeyBLELock private constructor(
     }
 
     data class Builder(
-        private var phonekeyBLEHelper: AbstractPhonekeyBLEHelper? = null,
+        private var phonekeyBLEHelper: PhonekeyBLEHelper? = null,
         private var lockName: String? = null,
         private var isLog: Boolean? = null,
         private var observer: PhonekeyBLELockObserver? = null,
@@ -877,7 +877,7 @@ class PhonekeyBLELock private constructor(
          *
          * @param phonekeyBLEHelper the BLE class extend AbstractPhonekeyBLEHelper and implement the writing and reading
          */
-        fun setBLEHelper(phonekeyBLEHelper: AbstractPhonekeyBLEHelper): Builder {
+        fun setBLEHelper(phonekeyBLEHelper: PhonekeyBLEHelper): Builder {
             this.phonekeyBLEHelper = phonekeyBLEHelper
             return this
         }

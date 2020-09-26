@@ -24,7 +24,7 @@ import com.userstar.phonekeyblelockdemokotlin.BLEHelper
 import com.userstar.phonekeyblelock.PhonekeyBLELock
 import com.userstar.phonekeyblelock.PhonekeyBLELockObserver
 import com.userstar.phonekeyblelockdemokotlin.R
-import com.userstar.phonekeyblelockdemokotlin.checkPermission
+import com.userstar.phonekeyblelockdemokotlin.Utility.checkPermission
 import kotlinx.android.synthetic.main.lock_fragment.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -91,6 +91,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         view.findViewById<Button>(R.id.open_Button).setOnClickListener { openLock() }
         view.findViewById<Button>(R.id.set_keypad_password_Button).setOnClickListener {  setKeypadPassword() }
         view.findViewById<Button>(R.id.remove_keypad_password_Button).setOnClickListener { removeKeypadPassword() }
+        view.findViewById<Button>(R.id.reader_operation_Button).setOnClickListener { readerOperation() }
         view.findViewById<BarcodeView>(R.id.zxing_BarcodeView).decodeSingle { barcodeResult ->
             Timber.i("QR code: $barcodeResult")
             qrCodeLiveData!!.postValue(barcodeResult.toString())
@@ -111,6 +112,8 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+
+        Timber.i("onViewCreated")
 
         scanResult = requireArguments()["scanResult"] as ScanResult
         lockName = scanResult.device.name
@@ -136,8 +139,9 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         }
     }
 
-    override fun onStop() {
-        super.onStop()
+    override fun onPause() {
+        super.onPause()
+
         if (zxing_BarcodeView.visibility == View.VISIBLE) {
             zxing_BarcodeView.pause()
             zxing_BarcodeView.visibility = View.INVISIBLE
@@ -675,6 +679,10 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                 }
             })
         }
+    }
+
+    private fun readerOperation() {
+
     }
 
     override fun onWrite(data: String) {

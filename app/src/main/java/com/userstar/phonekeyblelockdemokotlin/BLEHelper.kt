@@ -7,8 +7,10 @@ import android.bluetooth.le.ScanFilter
 import android.bluetooth.le.ScanSettings
 import android.bluetooth.le.ScanSettings.*
 import android.content.Context
+import android.os.Build
 import android.widget.Toast
 import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
+import com.userstar.phonekeyblelock.PhonekeyBLEHelper
 import org.greenrobot.eventbus.EventBus
 import timber.log.Timber
 import java.util.*
@@ -18,7 +20,7 @@ import java.util.*
  *
  * @see AbstractPhonekeyBLEHelper
  * */
-class BLEHelper : AbstractPhonekeyBLEHelper() {
+class BLEHelper : PhonekeyBLEHelper() {
 
     companion object {
         @JvmStatic
@@ -29,10 +31,6 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             }
             return instance as BLEHelper
         }
-
-        private val UUID_SERVICE: UUID = UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb")
-        private val UUID_CHARACTERISTIC_WRITE: UUID = UUID.fromString("0000fff3-0000-1000-8000-00805f9b34fb")
-        private val UUID_CHARACTERISTIC_NOTIFY: UUID = UUID.fromString("0000fff4-0000-1000-8000-00805f9b34fb")
     }
 
     private var adapter: BluetoothAdapter? = null
@@ -75,15 +73,13 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
         isScanning = false
     }
 
-    var bluetoothGatt: BluetoothGatt? = null
-    var gattCharacteristicWrite: BluetoothGattCharacteristic? = null
-    var gattCharacteristicNotify: BluetoothGattCharacteristic? = null
+    override var bluetoothGatt: BluetoothGatt? = null
     fun connectBLE(
         context: Context,
         lock: BluetoothDevice,
         connectedCallback: ()->Unit
     ) {
-        bluetoothGatt = lock.connectGatt(context, false, object : BluetoothGattCallback() {
+        val callback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(
                 gatt: BluetoothGatt,
                 status: Int,
@@ -108,31 +104,9 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 Timber.i("services discovered: $status")
                 bluetoothGatt = gatt
-
-                val gattService = bluetoothGatt!!.getService(UUID_SERVICE)
-                if (gattService == null) {
-                    Timber.e("UUID_SERVICE service didn't find")
-                    return
+                if (findCharacteristic(bluetoothGatt!!)) {
+                    connectedCallback()
                 }
-
-                gattCharacteristicWrite = gattService.getCharacteristic(UUID_CHARACTERISTIC_WRITE)
-                if (gattCharacteristicWrite==null) {
-                    Timber.e("Characteristic for writing didn't find")
-                    return
-                }
-
-                gattCharacteristicNotify = gattService.getCharacteristic(UUID_CHARACTERISTIC_NOTIFY)
-                if (gattCharacteristicNotify==null) {
-                    Timber.e("Characteristic for notifying didn't find")
-                    return
-                }
-
-                if (!bluetoothGatt!!.setCharacteristicNotification(gattCharacteristicNotify, true)) {
-                    Timber.e("Notification error")
-                    return
-                }
-
-                connectedCallback()
             }
 
             override fun onCharacteristicChanged(
@@ -141,26 +115,23 @@ class BLEHelper : AbstractPhonekeyBLEHelper() {
             ) {
                 super.onCharacteristicChanged(gatt, characteristic)
                 if (characteristic!=null) {
-                    listener(characteristic)
+                    read(characteristic.value)
                 } else {
                     Timber.w("characteristic null")
                 }
             }
-        })
+        }
+
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
+            bluetoothGatt = lock.connectGatt(context, false, callback)
+        } else {
+            bluetoothGatt = lock.connectGatt(context, false, callback, BluetoothDevice.TRANSPORT_LE)
+        }
     }
 
-    override lateinit var listener: (BluetoothGattCharacteristic) -> Unit
-    override fun write(data: ByteArray, callback: (BluetoothGattCharacteristic) -> Unit) {
-        this.listener = callback
-        gattCharacteristicWrite!!.value = data
-
-        // To prevent no response from lock, a little delay when sending data will be suggested
-        Timer().schedule(object : TimerTask() {
-            override fun run() {
-                bluetoothGatt?.writeCharacteristic(gattCharacteristicWrite!!)
-            }
-        }, 100)
-//        bluetoothGatt!!.writeCharacteristic(gattCharacteristicWrite!!)
+    override fun write(data: ByteArray, callback: (ByteArray) -> Unit) {
+        Thread.sleep(10)
+        super.write(data, callback)
     }
 
     fun disConnectBLE() {

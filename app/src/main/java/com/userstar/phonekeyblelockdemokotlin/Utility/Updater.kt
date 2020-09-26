@@ -1,4 +1,4 @@
-package com.userstar.phonekeyblelockdemokotlin
+package com.userstar.phonekeyblelockdemokotlin.Utility
 
 
 import android.annotation.SuppressLint
@@ -19,6 +19,7 @@ import android.widget.TextView
 import androidx.core.content.FileProvider
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
+import com.userstar.phonekeyblelockdemokotlin.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
