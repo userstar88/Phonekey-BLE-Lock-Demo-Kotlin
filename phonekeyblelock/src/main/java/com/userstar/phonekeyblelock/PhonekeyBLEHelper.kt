@@ -13,7 +13,6 @@ open class PhonekeyBLEHelper {
 
     open var bluetoothGatt: BluetoothGatt? = null
     private var gattCharacteristicWrite: BluetoothGattCharacteristic? = null
-    private var gattCharacteristicNotify: BluetoothGattCharacteristic? = null
 
     fun findCharacteristic(@NotNull gatt: BluetoothGatt): Boolean {
         val gattService = gatt.getService(UUID.fromString("0000fff0-0000-1000-8000-00805f9b34fb"))
@@ -28,7 +27,7 @@ open class PhonekeyBLEHelper {
             return false
         }
 
-        gattCharacteristicNotify = gattService.getCharacteristic(UUID.fromString("0000fff4-0000-1000-8000-00805f9b34fb"))
+        val gattCharacteristicNotify = gattService.getCharacteristic(UUID.fromString("0000fff4-0000-1000-8000-00805f9b34fb"))
         if (gattCharacteristicNotify==null) {
             Log.e(TAG, "Can't not get characteristic for notifying.")
             return false
@@ -39,14 +38,17 @@ open class PhonekeyBLEHelper {
             return false
         }
         return true
-
     }
 
     @CallSuper
     open fun write(data: ByteArray, callback: (ByteArray) -> Unit) {
         this.listener = callback
         gattCharacteristicWrite!!.value = data
-        bluetoothGatt?.writeCharacteristic(gattCharacteristicWrite!!)
+        Timer().schedule(object : TimerTask() {
+            override fun run() {
+                bluetoothGatt?.writeCharacteristic(gattCharacteristicWrite!!)
+            }
+        }, 100)
     }
 
     private lateinit var listener: (ByteArray) -> Unit

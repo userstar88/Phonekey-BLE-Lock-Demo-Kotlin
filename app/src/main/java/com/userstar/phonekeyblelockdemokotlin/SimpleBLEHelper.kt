@@ -4,32 +4,29 @@ import android.bluetooth.*
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanSettings
 import android.bluetooth.le.ScanSettings.*
 import android.content.Context
 import android.os.Build
 import android.widget.Toast
-import com.userstar.phonekeyblelock.AbstractPhonekeyBLEHelper
 import com.userstar.phonekeyblelock.PhonekeyBLEHelper
 import org.greenrobot.eventbus.EventBus
 import timber.log.Timber
-import java.util.*
 
 /**
  * This is a simple BLEHelper example class
  *
  * @see AbstractPhonekeyBLEHelper
  * */
-class BLEHelper : PhonekeyBLEHelper() {
+class SimpleBLEHelper : PhonekeyBLEHelper() {
 
     companion object {
         @JvmStatic
-        private var instance: BLEHelper? = null
-        fun getInstance() : BLEHelper {
+        private var instance: SimpleBLEHelper? = null
+        fun getInstance() : SimpleBLEHelper {
             if (instance == null) {
-                instance = BLEHelper()
+                instance = SimpleBLEHelper()
             }
-            return instance as BLEHelper
+            return instance as SimpleBLEHelper
         }
     }
 
@@ -58,7 +55,7 @@ class BLEHelper : PhonekeyBLEHelper() {
                         setDeviceName(nameFilter[index])
                     }.build()
                 }
-                val setting = ScanSettings.Builder().apply {
+                val setting = Builder().apply {
                     setReportDelay(0)
                     setScanMode(SCAN_MODE_LOW_LATENCY)
                 }.build()
@@ -74,7 +71,7 @@ class BLEHelper : PhonekeyBLEHelper() {
     }
 
     override var bluetoothGatt: BluetoothGatt? = null
-    fun connectBLE(
+    fun connect(
         context: Context,
         lock: BluetoothDevice,
         connectedCallback: ()->Unit
@@ -130,11 +127,10 @@ class BLEHelper : PhonekeyBLEHelper() {
     }
 
     override fun write(data: ByteArray, callback: (ByteArray) -> Unit) {
-        Thread.sleep(10)
         super.write(data, callback)
     }
 
-    fun disConnectBLE() {
+    fun disconnect() {
         bluetoothGatt!!.disconnect()
         bluetoothGatt!!.close()
         bluetoothGatt = null

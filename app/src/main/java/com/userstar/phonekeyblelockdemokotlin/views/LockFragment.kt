@@ -20,7 +20,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.fragment.findNavController
 import com.journeyapps.barcodescanner.BarcodeView
-import com.userstar.phonekeyblelockdemokotlin.BLEHelper
+import com.userstar.phonekeyblelockdemokotlin.SimpleBLEHelper
 import com.userstar.phonekeyblelock.PhonekeyBLELock
 import com.userstar.phonekeyblelock.PhonekeyBLELockObserver
 import com.userstar.phonekeyblelockdemokotlin.R
@@ -42,7 +42,12 @@ import kotlin.concurrent.thread
 
 
 private const val DEFAULT_LOCK_PASSWORD = "1111111111111111"
-private const val DEFAULT_KEYPAD_PASSWORD = "666666"
+private const val DEFAULT_KEYPAD_PASSWORD = "000000"
+private const val DEFAULT_READER_COMMAND = "RU300"
+// RE
+// WE6666777788889999AAAABBBB
+// RT
+// RU300
 
 @SuppressLint("SetTextI18n")
 class LockFragment : Fragment(), PhonekeyBLELockObserver {
@@ -125,12 +130,12 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
              * Init your bluetooth class with PhonykeyBLELock first
              * Your bluetooth class must implement AbstractPhonekeyBLEHelper
              *
-             * @see BLEHelper
+             * @see SimpleBLEHelper
              * */
             phonekeyBLELock = PhonekeyBLELock.Builder()
                 .enableLog(true)
                 .setLockName(lockName)
-                .setBLEHelper(BLEHelper.getInstance())
+                .setBLEHelper(SimpleBLEHelper.getInstance())
                 .setOnReadyListener { isActive: Boolean, type: PhonekeyBLELock.LockType, battery: String, version: String, isOpening: Boolean ->
                     refreshLockStatus(isActive, type, battery, version, isOpening)
                 }
@@ -141,15 +146,17 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
 
     override fun onPause() {
         super.onPause()
-
         if (zxing_BarcodeView.visibility == View.VISIBLE) {
             zxing_BarcodeView.pause()
             zxing_BarcodeView.visibility = View.INVISIBLE
         }
+    }
+
+    override fun onStop() {
+        super.onStop()
         alertDialog?.dismiss()
-        communicationDialogFragment?.dismiss()
         EventBus.getDefault().unregister(this)
-        BLEHelper.getInstance().disConnectBLE()
+        SimpleBLEHelper.getInstance().disconnect()
     }
 
     private fun updateLockStatus() {
@@ -180,7 +187,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             open_close_status_TextView.text = "isOpening: $isOpening"
         }
 
-        Timber.i("isShowing: ${communicationDialogFragment?.isShowing}")
         log("LockType: ${this.lockType}, isActive: ${this.isActive}, battery: $battery, version: $version, isOpening: $isOpening", Log.INFO, true)
     }
 
@@ -200,9 +206,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         observe(viewLifecycleOwner) { code ->
                             qrCodeLiveData!!.removeObservers(viewLifecycleOwner)
                             qrCodeLiveData = null
-                            enterPasswordAlertDialog("Set your device password",
-                                PasswordType.LOCK
-                            ) { devicePassword ->
+                            getAlertDialogWithEditText("Set your device password", InputType.LOCK_PASSWORD) { devicePassword ->
                                 Timber.i("Set device password: $devicePassword")
                                 communicationDialogFragment?.show("Activate By QR Code")
                                 phonekeyBLELock.activate(code, devicePassword, object : PhonekeyBLELock.ActivateListener {
@@ -238,8 +242,8 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             if (NfcAdapter.getDefaultAdapter(requireContext()) == null) {
                 log("This lock does not support NFC", Log.WARN)
             } else {
-                enterPasswordAlertDialog("Set your device password",
-                    PasswordType.LOCK
+                getAlertDialogWithEditText("Set your device password",
+                    InputType.LOCK_PASSWORD
                 ) { devicePassword ->
                     Timber.i("Set device password: $devicePassword")
                     alertDialog = AlertDialog.Builder(requireContext())
@@ -291,7 +295,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                 .setMessage("This action will reset the lock and clear lock's memory.")
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Confirm") { _, _ ->
-                    enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
+                    getAlertDialogWithEditText("Device password", InputType.LOCK_PASSWORD) { devicePassword ->
                         communicationDialogFragment?.show("Deactivate")
                         phonekeyBLELock.deactivate(devicePassword, object : PhonekeyBLELock.DeactivateListener {
                             override fun onFailure(
@@ -324,7 +328,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             log("Activated Lock first!!!", Log.WARN)
         } else {
             Timber.i("Check device password")
-            enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
+            getAlertDialogWithEditText("Device password", InputType.LOCK_PASSWORD) { devicePassword ->
                 communicationDialogFragment?.show("Check Device Password")
                 phonekeyBLELock.checkDevicePassword(devicePassword, object : PhonekeyBLELock.CheckDevicePasswordListener {
                     override fun onResult(
@@ -336,7 +340,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                             PhonekeyBLELock.DevicePasswordStatus.CORRECT -> log("Device password is correct!!!", Log.INFO)
                             PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> log("Device password is incorrect $errorTimes times", Log.INFO)
                             PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> log("Device password is incorrect above 3 times, need to wait $needToWait minutes", Log.INFO)
-                            else -> log("UNKNOWN ERROR", Log.ERROR)
+                            PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> log("Device password's lenght must be 16.", Log.INFO)
                         }
                     }
                 })
@@ -349,9 +353,9 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             log("Activated Lock first!!!", Log.WARN)
         } else {
             Timber.i("Change device password")
-            enterPasswordAlertDialog("Enter old device password", PasswordType.LOCK) { oldPassword ->
+            getAlertDialogWithEditText("Enter old device password", InputType.LOCK_PASSWORD) { oldPassword ->
                 Timber.i("Old device password: $oldPassword")
-                enterPasswordAlertDialog("Enter new device password", PasswordType.LOCK) { newPassword ->
+                getAlertDialogWithEditText("Enter new device password", InputType.LOCK_PASSWORD) { newPassword ->
                     Timber.i("New device password: $newPassword")
                     communicationDialogFragment?.show("Change Device Password")
                     phonekeyBLELock.changeDevicePassword(
@@ -385,7 +389,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             log("Activated Lock first!!!", Log.WARN)
         } else {
             if (NfcAdapter.getDefaultAdapter(requireContext()) != null) {
-                enterPasswordAlertDialog("New device password", PasswordType.LOCK) { newDevicePassword ->
+                getAlertDialogWithEditText("New device password", InputType.LOCK_PASSWORD) { newDevicePassword ->
                     Timber.i("New device password: $newDevicePassword")
                     alertDialog = AlertDialog.Builder(requireContext())
                         .setMessage("Scan NFC Tag")
@@ -442,7 +446,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         if (!phonekeyBLELock.isActive()) {
             log("Activated Lock first!!!", Log.WARN)
         } else {
-            enterPasswordAlertDialog("Device password", PasswordType.LOCK) { devicePassword ->
+            getAlertDialogWithEditText("Device password", InputType.LOCK_PASSWORD) { devicePassword ->
                 communicationDialogFragment?.show("Establish Key")
                 phonekeyBLELock.establishKey(devicePassword, object : PhonekeyBLELock.EstablishKeyListener {
                     override fun onFailure(
@@ -614,8 +618,8 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         response.body?.close()
                         Timber.i("response: $jsonObject")
                         val ac3 = jsonObject.getString("ac3")
-                        enterPasswordAlertDialog("Set  keypad password",
-                            PasswordType.KEYPAD
+                        getAlertDialogWithEditText("Set  keypad password",
+                            InputType.KEYPAD_PASSWORD
                         ) { keypadPassword ->
                             communicationDialogFragment?.show("Set Keypad Password")
                             phonekeyBLELock.setKeypadPassword(ac3, keypadPassword, object : PhonekeyBLELock.SetKeypadPasswordListener{
@@ -682,7 +686,33 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     }
 
     private fun readerOperation() {
+        getAlertDialogWithEditText("Device password", InputType.LOCK_PASSWORD) { devicePassword ->
+            getAlertDialogWithEditText("Enter command + data(optional)", InputType.READER_COMMAND) { commandData ->
+                communicationDialogFragment?.show("Reader operation:\n$commandData")
+                phonekeyBLELock.readerOperation(devicePassword, commandData, object : PhonekeyBLELock.ReaderOperationListener {
+                    override fun onFailure(
+                        status: PhonekeyBLELock.DevicePasswordStatus,
+                        errorTimes: Int,
+                        needToWait: Int
+                    ) {
+                        when (status) {
+                            PhonekeyBLELock.DevicePasswordStatus.LENGTH_ERROR -> log("Device password length error!!!", Log.ERROR)
+                            PhonekeyBLELock.DevicePasswordStatus.INCORRECT -> log("Device password is error $errorTimes times.", Log.ERROR)
+                            PhonekeyBLELock.DevicePasswordStatus.INCORRECT_3_TIMES -> log("Device password is error above 3 times, need to wait $needToWait minutes.", Log.ERROR)
+                            else -> log("UNKNOWN ERROR.", Log.ERROR)
+                        }
+                    }
 
+                    override fun onFailure(errorCode: PhonekeyBLELock.ReaderError) {
+
+                    }
+
+                    override fun onSuccess(data: String) {
+                        log("Result: $data", Log.INFO)
+                    }
+                })
+            }
+        }
     }
 
     override fun onWrite(data: String) {
@@ -693,10 +723,13 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         communicationDialogFragment?.addLine("Lock -> $data")
     }
 
-    enum class PasswordType {
-        LOCK, KEYPAD
+    enum class InputType {
+        LOCK_PASSWORD,
+        KEYPAD_PASSWORD,
+        READER_COMMAND
     }
-    private fun enterPasswordAlertDialog(title: String, type: PasswordType, callback: (String) -> Unit) {
+
+    private fun getAlertDialogWithEditText(title: String, type: InputType, callback: (String) -> Unit) {
         GlobalScope.launch(Dispatchers.Main) {
             val editText = EditText(requireContext())
             alertDialog = AlertDialog.Builder(requireContext())
@@ -705,7 +738,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Confirm") { _, _ ->
                     when (type) {
-                        PasswordType.LOCK -> {
+                        InputType.LOCK_PASSWORD -> {
                             if (editText.text.toString().length != 16) {
                                 AlertDialog.Builder(requireContext())
                                     .setMessage("Length must equal 16")
@@ -715,10 +748,20 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                             }
                         }
 
-                        PasswordType.KEYPAD -> {
+                        InputType.KEYPAD_PASSWORD -> {
                             if (editText.text.toString().length != 6) {
                                 AlertDialog.Builder(requireContext())
                                     .setMessage("Length must equal 6")
+                                    .setNegativeButton("Dismiss", null)
+                                    .show()
+                                return@setPositiveButton
+                            }
+                        }
+
+                        InputType.READER_COMMAND -> {
+                            if (editText.text.toString().isEmpty()) {
+                                AlertDialog.Builder(requireContext())
+                                    .setMessage("Command can not be empty.")
                                     .setNegativeButton("Dismiss", null)
                                     .show()
                                 return@setPositiveButton
@@ -732,7 +775,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         }
     }
 
-    private fun getAlertAlertDialogEditView(editText: EditText, type: PasswordType): View {
+    private fun getAlertAlertDialogEditView(editText: EditText, type: InputType): View {
         val linearLayout = LinearLayout(requireContext())
         linearLayout.orientation = LinearLayout.VERTICAL
         linearLayout.gravity = Gravity.CENTER_HORIZONTAL
@@ -749,10 +792,11 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         layoutParams.marginEnd = 30
         editText.layoutParams = layoutParams
         editText.gravity = Gravity.CENTER_HORIZONTAL
-        if (type == PasswordType.LOCK) {
-            editText.setText(DEFAULT_LOCK_PASSWORD)
-        } else {
-            editText.setText(DEFAULT_KEYPAD_PASSWORD)
+
+        when (type) {
+            InputType.LOCK_PASSWORD -> editText.setText(DEFAULT_LOCK_PASSWORD)
+            InputType.KEYPAD_PASSWORD -> editText.setText(DEFAULT_KEYPAD_PASSWORD)
+            InputType.READER_COMMAND -> editText.setText(DEFAULT_READER_COMMAND)
         }
 
         linearLayout.addView(editText)

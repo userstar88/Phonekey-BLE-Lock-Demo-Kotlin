@@ -5,20 +5,34 @@ import android.content.DialogInterface
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import timber.log.Timber
+import java.security.Permission
 
 fun checkPermission(
     activity: AppCompatActivity,
     permission: String,
     callback: (Boolean) -> Unit
 ) {
-    Timber.i("Check $permission.")
-    activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted: Boolean ->
+    if (launcher == null) {
+        launcher = registerPermissionActivityResult(activity, permission, callback)
+    }
+    launcher?.launch(permission)
+}
+
+private var launcher: ActivityResultLauncher<String>? = null
+private fun registerPermissionActivityResult(
+    activity: AppCompatActivity,
+    permission: String,
+    callback: (Boolean) -> Unit
+): ActivityResultLauncher<String> {
+    return activity.registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
         if (isGranted) {
+            Timber.i("Check $permission.")
             callback(true)
         } else {
             val message = when (permission) {
@@ -52,5 +66,5 @@ fun checkPermission(
                 .setPositiveButton(rightButtonTitle, listener)
                 .show()
         }
-    }.launch(permission)
+    }
 }

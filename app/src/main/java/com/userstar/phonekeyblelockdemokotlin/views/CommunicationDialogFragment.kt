@@ -5,7 +5,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
-import androidx.fragment.app.Fragment
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -18,7 +18,6 @@ import com.userstar.phonekeyblelockdemokotlin.R
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 @SuppressLint("SetTextI18n")
 class CommunicationDialogFragment : DialogFragment() {
@@ -39,31 +38,44 @@ class CommunicationDialogFragment : DialogFragment() {
         val view = inflater.inflate(R.layout.communication_dialog_fragment, container, false)
 
         dialog!!.window!!.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+        dialog!!.setOnKeyListener { dialogInterface, code, event ->
+            if (code == KeyEvent.KEYCODE_BACK && event.action == KeyEvent.ACTION_UP) {
+                closeButton.performClick()
+                true
+            } else {
+                false
+            }
+        }
         titleTextView = view.findViewById(R.id.title_TextView)
         dataTextView = view.findViewById(R.id.data_TextView)
-        view.findViewById<Button>(R.id.close_Button).setOnClickListener {
-            dialog?.hide()
+        closeButton = view.findViewById(R.id.close_Button)
+        closeButton.setOnClickListener {
             isShowing = false
             dataTextView.text = ""
+            dialog?.hide()
             if (isDisconnected) {
                 findNavController().popBackStack()
             }
         }
-        closeButton = view.findViewById(R.id.close_Button)
 
         return view
     }
 
-    override fun onResume() {
-        super.onResume()
+    override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        super.onViewCreated(view, savedInstanceState)
         didCreatedCallback()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        dismiss()
     }
 
     private lateinit var manager: FragmentManager
     private lateinit var didCreatedCallback: () -> Unit
     fun create(manager: FragmentManager, didCreatedCallback: () -> Unit) {
-        this.didCreatedCallback = didCreatedCallback
         this.manager = manager
+        this.didCreatedCallback = didCreatedCallback
         show(this.manager, "")
         isShowing = true
     }
@@ -86,4 +98,5 @@ class CommunicationDialogFragment : DialogFragment() {
             }
         }
     }
+
 }

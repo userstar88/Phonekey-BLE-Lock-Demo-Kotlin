@@ -49,8 +49,8 @@ class MainActivity : AppCompatActivity() {
                 null
             )
         } else {
-            Timber.w("Can't no get NFC adapter")
-            Toast.makeText(this, "This lock does not support NFC", Toast.LENGTH_SHORT).show()
+            Timber.w("Can't get NFC adapter")
+            Toast.makeText(this, "This device does not support NFC", Toast.LENGTH_SHORT).show()
         }
     }
 

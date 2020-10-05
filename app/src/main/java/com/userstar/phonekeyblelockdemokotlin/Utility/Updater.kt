@@ -30,9 +30,10 @@ import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 
+/**
+ * */
 
 class UpdaterFailedException(message: String) : Exception(message)
-
 @SuppressLint("SetTextI18n")
 class Updater(
     private val context: Context
