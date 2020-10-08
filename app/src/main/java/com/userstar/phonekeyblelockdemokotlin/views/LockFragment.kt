@@ -57,22 +57,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         EventBus.getDefault().register(this)
     }
 
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onReceiveNFCTag(nfcV: NfcV) {
-        tagLiveData?.postValue(nfcV)
-    }
-
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    fun onDisconnected(message: String) {
-        if (communicationDialogFragment == null || !communicationDialogFragment!!.isShowing) {
-            findNavController().popBackStack()
-        } else {
-            communicationDialogFragment?.addLine(message, true)
-            communicationDialogFragment?.isDisconnected = true
-        }
-        Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
-    }
-
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -118,8 +102,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        Timber.i("onViewCreated")
-
         scanResult = requireArguments()["scanResult"] as ScanResult
         lockName = scanResult.device.name
         lock_name_TextView.text = "Lock Name: $lockName"
@@ -128,18 +110,20 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         communicationDialogFragment?.create(parentFragmentManager) {
             /**
              * Init your bluetooth class with PhonykeyBLELock first
-             * Your bluetooth class must implement AbstractPhonekeyBLEHelper
+             * Your bluetooth class must inherit PhonekeyBLELockHelper
              *
              * @see SimpleBLEHelper
              * */
             phonekeyBLELock = PhonekeyBLELock.Builder()
-                .enableLog(true)
-                .setLockName(lockName)
                 .setBLEHelper(SimpleBLEHelper.getInstance())
-                .setOnReadyListener { isActive: Boolean, type: PhonekeyBLELock.LockType, battery: String, version: String, isOpening: Boolean ->
-                    refreshLockStatus(isActive, type, battery, version, isOpening)
-                }
+                .setLockName(lockName)
+                .enableLog(true)
                 .registerObserver(this@LockFragment)
+                .setOnReadyListener(object : PhonekeyBLELock.LockStatusGetListener {
+                    override fun onReceive(isActive: Boolean, type: PhonekeyBLELock.LockType, battery: String, version: String, isOpening: Boolean) {
+                        refreshLockStatus(isActive, type, battery, version, isOpening)
+                    }
+                })
                 .build()
         }
     }
@@ -157,6 +141,22 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         alertDialog?.dismiss()
         EventBus.getDefault().unregister(this)
         SimpleBLEHelper.getInstance().disconnect()
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onReceiveNFCTag(nfcV: NfcV) {
+        tagLiveData?.postValue(nfcV)
+    }
+
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    fun onDisconnected(message: String) {
+        if (communicationDialogFragment == null || !communicationDialogFragment!!.isShowing) {
+            findNavController().popBackStack()
+        } else {
+            communicationDialogFragment?.addLine(message, true)
+            communicationDialogFragment?.isDisconnected = true
+        }
+        Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
     }
 
     private fun updateLockStatus() {

@@ -861,11 +861,10 @@ class PhonekeyBLELock private constructor(
                         listener.onFailure(status, errorTimes, needToWait)
                     } else {
                         readerTempResult = ""
-                        var tmp = ""
-                        if (command.length < 16) {
-                            tmp = command
+                        val tmp = if (command.length < 16) {
+                            command
                         } else {
-                            tmp = command.substring(0, 16)
+                            command.substring(0, 16)
                         }
                         val hexCommand = AES.parseAscii2HexStr(tmp)
                         val data = "0681${String.format("%02x", command.length)}$hexCommand"
@@ -882,11 +881,10 @@ class PhonekeyBLELock private constructor(
             "0682" -> {
                 when (receivedDataString.substring(4, 6)) {
                     "01" -> {
-                        var tmp = ""
-                        if (command.length < 16) {
-                            tmp = command
+                        val tmp = if (command.length < 16) {
+                            command
                         } else {
-                            tmp = command.substring(0, 16)
+                            command.substring(0, 16)
                         }
                         val hexCommand = AES.parseAscii2HexStr(tmp)
                         val data = "0681${String.format("%02x", tmp.length)}$hexCommand"
@@ -957,20 +955,20 @@ class PhonekeyBLELock private constructor(
     }
 
     data class Builder(
-        private var phonekeyBLEHelper: PhonekeyBLEHelper? = null,
+        private var helper: PhonekeyBLEHelper? = null,
         private var lockName: String? = null,
-        private var isLog: Boolean? = null,
+        private var isLog: Boolean = true,
         private var observer: PhonekeyBLELockObserver? = null,
-        private var listener: onReadyListener? = null
+        private var listener: LockStatusGetListener? = null
     ) {
         /**
          * Set the BLE helper so that this class can write and read bluetooth data.
          * If this is not be set, other function won't work!!!
          *
-         * @param phonekeyBLEHelper the BLE class extend AbstractPhonekeyBLEHelper and implement the writing and reading
+         * @param helper the BLE class extend AbstractPhonekeyBLEHelper and implement the writing and reading
          */
-        fun setBLEHelper(phonekeyBLEHelper: PhonekeyBLEHelper): Builder {
-            this.phonekeyBLEHelper = phonekeyBLEHelper
+        fun setBLEHelper(helper: PhonekeyBLEHelper): Builder {
+            this.helper = helper
             return this
         }
 
@@ -1001,14 +999,14 @@ class PhonekeyBLELock private constructor(
             return this
         }
 
-        fun setOnReadyListener(listener: onReadyListener) : Builder {
+        fun setOnReadyListener(listener: LockStatusGetListener) : Builder {
             this.listener = listener
             return this
         }
 
         class PhonekeyBLELockBuilderException(message: String) : Exception(message)
         fun build(): PhonekeyBLELock {
-            if (phonekeyBLEHelper == null) {
+            if (helper == null) {
                 throw PhonekeyBLELockBuilderException("PhonekeyBLEHelper is null.")
             }
 
@@ -1017,10 +1015,10 @@ class PhonekeyBLELock private constructor(
             }
 
             val phonekeyBLELock = PhonekeyBLELock(
-                phonekeyBLEHelper,
+                helper,
                 lockName,
                 observer,
-                isLog ?: true
+                isLog
             )
 
             phonekeyBLELock.getLockStatus(object : LockStatusGetListener {
@@ -1032,9 +1030,7 @@ class PhonekeyBLELock private constructor(
                     isOpening: Boolean
                 ) {
                     phonekeyBLELock.lockType = type
-                    if (listener != null) {
-                        listener!!(isActive, type, battery, version, isOpening)
-                    }
+                    listener?.onReceive(isActive, type, battery, version, isOpening)
                 }
             })
 

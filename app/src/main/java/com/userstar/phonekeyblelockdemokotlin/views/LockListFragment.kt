@@ -22,7 +22,6 @@ import com.userstar.phonekeyblelockdemokotlin.Utility.checkPermission
 import kotlinx.android.synthetic.main.lock_list_fragment.*
 import timber.log.Timber
 import java.util.*
-import kotlin.properties.Delegates
 
 private const val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
 
