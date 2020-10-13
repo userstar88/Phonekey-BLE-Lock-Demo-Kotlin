@@ -41,7 +41,7 @@ import java.util.*
 import kotlin.concurrent.thread
 
 
-private const val DEFAULT_LOCK_PASSWORD = "1111111111111111"
+private const val DEFAULT_DEVICE_PASSWORD = "1111111111111111"
 private const val DEFAULT_KEYPAD_PASSWORD = "000000"
 private const val DEFAULT_READER_COMMAND = "RU300"
 // RE
@@ -63,7 +63,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     ): View? {
         val view = inflater.inflate(R.layout.lock_fragment, container, false)
 
-        view.findViewById<ImageButton>(R.id.update_button).setOnClickListener { updateLockStatus() }
+        view.findViewById<ImageButton>(R.id.update_button).setOnClickListener { getLockInfo() }
         view.findViewById<Button>(R.id.activate_by_qr_code_Button).setOnClickListener {
             checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.CAMERA) { isGranted ->
                 if (isGranted) {
@@ -94,8 +94,6 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     private lateinit var scanResult: ScanResult
     private lateinit var lockName: String
     private lateinit var phonekeyBLELock: PhonekeyBLELock
-    private lateinit var lockType: PhonekeyBLELock.LockType
-    private var isActive = false
     private var alertDialog: AlertDialog? = null
     private var communicationDialogFragment: CommunicationDialogFragment? = CommunicationDialogFragment()
 
@@ -119,7 +117,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                 .setLockName(lockName)
                 .enableLog(true)
                 .registerObserver(this@LockFragment)
-                .setOnReadyListener(object : PhonekeyBLELock.LockStatusGetListener {
+                .setOnReadyListener(object : PhonekeyBLELock.GetInfoListener {
                     override fun onReceive(isActive: Boolean, type: PhonekeyBLELock.LockType, battery: String, version: String, isOpening: Boolean) {
                         refreshLockStatus(isActive, type, battery, version, isOpening)
                     }
@@ -159,10 +157,10 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         Toast.makeText(requireActivity(), "Lock disconnected", Toast.LENGTH_LONG).show()
     }
 
-    private fun updateLockStatus() {
+    private fun getLockInfo() {
         // Update lock's status
-        communicationDialogFragment?.show("Get Lock Status")
-        phonekeyBLELock.getLockStatus(object : PhonekeyBLELock.LockStatusGetListener {
+        communicationDialogFragment?.show("Get Lock's info")
+        phonekeyBLELock.getInfo(object : PhonekeyBLELock.GetInfoListener {
             override fun onReceive(
                 isActive: Boolean,
                 type: PhonekeyBLELock.LockType,
@@ -176,18 +174,14 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
     }
 
     private fun refreshLockStatus(isActive: Boolean, type: PhonekeyBLELock.LockType, battery: String, version: String, isOpening: Boolean) {
-        this.isActive = isActive
-        this.lockType = type
-
         GlobalScope.launch(Dispatchers.Main) {
-            lock_type_TextView.text = "Lock Type: ${this@LockFragment.lockType}"
-            is_active_TextView.text = "isActive: ${this@LockFragment.isActive}"
+            lock_type_TextView.text = "Lock Type: $type"
+            is_active_TextView.text = "isActive: $isActive"
             battery_TextView.text = "Battery: $battery"
             version_TextView.text = "Version: $version"
             open_close_status_TextView.text = "isOpening: $isOpening"
         }
-
-        log("LockType: ${this.lockType}, isActive: ${this.isActive}, battery: $battery, version: $version, isOpening: $isOpening", Log.INFO, true)
+        log("LockType: $type, isActive: $isActive, battery: $battery, version: $version, isOpening: $isOpening", Log.INFO, true)
     }
 
     /*-------------------------Activation----------------------------------------------------*/
@@ -618,9 +612,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         response.body?.close()
                         Timber.i("response: $jsonObject")
                         val ac3 = jsonObject.getString("ac3")
-                        getAlertDialogWithEditText("Set  keypad password",
-                            InputType.KEYPAD_PASSWORD
-                        ) { keypadPassword ->
+                        getAlertDialogWithEditText("Set  keypad password", InputType.KEYPAD_PASSWORD) { keypadPassword ->
                             communicationDialogFragment?.show("Set Keypad Password")
                             phonekeyBLELock.setKeypadPassword(ac3, keypadPassword, object : PhonekeyBLELock.SetKeypadPasswordListener{
                                 override fun onFailure(error: PhonekeyBLELock.KeypadError) {
@@ -703,8 +695,12 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                         }
                     }
 
-                    override fun onFailure(errorCode: PhonekeyBLELock.ReaderError) {
-
+                    override fun onFailure(readerError: PhonekeyBLELock.ReaderError) {
+                        when (readerError) {
+                            PhonekeyBLELock.ReaderError.COMMAND_LENGTH_ERROR -> log("Command length error.", Log.ERROR)
+                            PhonekeyBLELock.ReaderError.NOT_SUPPORT -> log("Function not support.", Log.ERROR)
+                            PhonekeyBLELock.ReaderError.NO_RESPONSE -> log("No response.", Log.ERROR)
+                        }
                     }
 
                     override fun onSuccess(data: String) {
@@ -734,7 +730,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
             val editText = EditText(requireContext())
             alertDialog = AlertDialog.Builder(requireContext())
                 .setTitle(title)
-                .setView(getAlertAlertDialogEditView(editText, type))
+                .setView(getAlertDialogEditView(editText, type))
                 .setNegativeButton("Cancel", null)
                 .setPositiveButton("Confirm") { _, _ ->
                     when (type) {
@@ -775,7 +771,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         }
     }
 
-    private fun getAlertAlertDialogEditView(editText: EditText, type: InputType): View {
+    private fun getAlertDialogEditView(editText: EditText, type: InputType): View {
         val linearLayout = LinearLayout(requireContext())
         linearLayout.orientation = LinearLayout.VERTICAL
         linearLayout.gravity = Gravity.CENTER_HORIZONTAL
@@ -794,7 +790,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         editText.gravity = Gravity.CENTER_HORIZONTAL
 
         when (type) {
-            InputType.LOCK_PASSWORD -> editText.setText(DEFAULT_LOCK_PASSWORD)
+            InputType.LOCK_PASSWORD -> editText.setText(DEFAULT_DEVICE_PASSWORD)
             InputType.KEYPAD_PASSWORD -> editText.setText(DEFAULT_KEYPAD_PASSWORD)
             InputType.READER_COMMAND -> editText.setText(DEFAULT_READER_COMMAND)
         }
