@@ -20,14 +20,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_main)
-
         if (BuildConfig.DEBUG) {
             Timber.plant(ThreadIncludedDebugTree())
         } else {
             Timber.plant(ReleaseTree())
         }
-
+        setContentView(R.layout.activity_main)
         runUpdate()
     }
 

@@ -3,6 +3,7 @@ package com.userstar.phonekeyblelockdemokotlin.views
 import android.Manifest
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
+import android.content.Context
 import android.os.Bundle
 import androidx.fragment.app.Fragment
 import android.view.LayoutInflater
@@ -10,6 +11,8 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.DividerItemDecoration
@@ -27,14 +30,30 @@ private const val AUTO_CONNECT_LOCK = "BKBFMLNAFBI"
 
 class LockListFragment : Fragment() {
 
+    private val locationPermission: String = Manifest.permission.ACCESS_FINE_LOCATION
+    private lateinit var checkLocationPermissionLauncher: ActivityResultLauncher<String>
+    private var locationOnPermitCallback: ((Boolean) -> Unit)? = null
     private var isLocationPermissionGranted = false
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.ACCESS_FINE_LOCATION) { isGranted ->
-            isLocationPermissionGranted = isGranted
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        checkLocationPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            locationOnPermitCallback?.invoke(isGranted)
         }
     }
+
+    private fun checkLocationPermission(callback: ((Boolean) -> Unit)) {
+        locationOnPermitCallback = callback
+        checkLocationPermissionLauncher.launch(locationPermission)
+
+    }
+
+//    override fun onCreate(savedInstanceState: Bundle?) {
+//        super.onCreate(savedInstanceState)
+//
+//        checkPermission(requireActivity() as AppCompatActivity, ) { isGranted ->
+//            isLocationPermissionGranted = isGranted
+//        }
+//    }
 
     private lateinit var lockListRecyclerViewAdapter: LockListRecyclerViewAdapter
     private lateinit var lockListRecyclerView: RecyclerView
@@ -68,45 +87,49 @@ class LockListFragment : Fragment() {
         lockListRecyclerViewAdapter.notifyDataSetChanged()
 
         start_scan_Button.setOnClickListener {
-            if (isLocationPermissionGranted) {
-                if (SimpleBLEHelper.getInstance().isScanning) {
-                    Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
-                } else {
-                    SimpleBLEHelper.getInstance().startScan(requireContext(), arrayOf(), object : ScanCallback() {
-                        override fun onScanFailed(errorCode: Int) {
-                            super.onScanFailed(errorCode)
-                            Timber.i("failed: $errorCode")
-                            when (errorCode) {
-                                SCAN_FAILED_ALREADY_STARTED -> Timber.e("SCAN_FAILED_ALREADY_STARTED")
-                                SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> Timber.e("SCAN_FAILED_APPLICATION_REGISTRATION_FAILED")
-                                SCAN_FAILED_FEATURE_UNSUPPORTED -> Timber.e("SCAN_FAILED_FEATURE_UNSUPPORTED")
-                                SCAN_FAILED_INTERNAL_ERROR -> Timber.e("SCAN_FAILED_INTERNAL_ERROR")
+            checkLocationPermission { isGranted -> Boolean
+                if (isGranted) {
+                    if (SimpleBLEHelper.getInstance().isScanning) {
+                        Toast.makeText(requireContext(), "Already scanning", Toast.LENGTH_LONG).show()
+                    } else {
+                        SimpleBLEHelper.getInstance().startScan(requireContext(), arrayOf(), object : ScanCallback() {
+                            override fun onScanFailed(errorCode: Int) {
+                                super.onScanFailed(errorCode)
+                                Timber.i("failed: $errorCode")
+                                when (errorCode) {
+                                    SCAN_FAILED_ALREADY_STARTED -> Timber.e("SCAN_FAILED_ALREADY_STARTED")
+                                    SCAN_FAILED_APPLICATION_REGISTRATION_FAILED -> Timber.e("SCAN_FAILED_APPLICATION_REGISTRATION_FAILED")
+                                    SCAN_FAILED_FEATURE_UNSUPPORTED -> Timber.e("SCAN_FAILED_FEATURE_UNSUPPORTED")
+                                    SCAN_FAILED_INTERNAL_ERROR -> Timber.e("SCAN_FAILED_INTERNAL_ERROR")
+                                }
                             }
-                        }
 
-                        override fun onScanResult(callbackType: Int, result: ScanResult?) {
-                            super.onScanResult(callbackType, result)
-                            if (result != null && result.device.name!=null) {
-                                Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
-                                var isNewDevice = true
-                                for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
-                                    if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
-                                        lockListRecyclerViewAdapter.updateRssi(position, result)
-                                        isNewDevice = false
-                                        break
+                            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                                super.onScanResult(callbackType, result)
+                                if (result != null && result.device.name!=null) {
+                                    Timber.i("discover name: ${result.device.name}, address: ${result.device.address}, rssi: ${result.rssi}")
+                                    var isNewDevice = true
+                                    for (position in 0 until lockListRecyclerViewAdapter.scanResultList.size) {
+                                        if (lockListRecyclerViewAdapter.scanResultList[position].device.name == result.device.name) {
+                                            lockListRecyclerViewAdapter.updateRssi(position, result)
+                                            isNewDevice = false
+                                            break
+                                        }
+                                    }
+                                    if (isNewDevice) {
+                                        // Add new locks
+                                        lockListRecyclerViewAdapter.updateList(result)
                                     }
                                 }
-                                if (isNewDevice) {
-                                    // Add new locks
-                                    lockListRecyclerViewAdapter.updateList(result)
-                                }
                             }
-                        }
-                    })
+                        })
+                    }
+                } else {
+                    Toast.makeText(requireContext(), "Lack of location accessing permission.", Toast.LENGTH_LONG).show()
                 }
-            } else {
-                Toast.makeText(requireContext(), "Lack of location accessing permission.", Toast.LENGTH_LONG).show()
             }
+//            if (isLocationPermissionGranted) {
+
         }
 
         start_scan_Button.setOnLongClickListener {

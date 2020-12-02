@@ -5,17 +5,24 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.bluetooth.le.ScanResult
 import android.content.Context
+import android.content.DialogInterface
+import android.content.Intent
+import android.net.Uri
 import android.nfc.NfcAdapter
 import android.nfc.tech.NfcV
 import android.os.Bundle
+import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.*
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.MutableLiveData
 import androidx.navigation.fragment.findNavController
@@ -52,6 +59,53 @@ private const val DEFAULT_READER_COMMAND = "RU300"
 @SuppressLint("SetTextI18n")
 class LockFragment : Fragment(), PhonekeyBLELockObserver {
 
+    private var cameraOnPermitCallback: ((Boolean) -> Unit)? = null
+    private lateinit var checkCameraPermissionLauncher: ActivityResultLauncher<String>
+    override fun onAttach(context: Context) {
+        super.onAttach(context)
+        checkCameraPermissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            if (isGranted) {
+                Timber.i("Check ${Manifest.permission.CAMERA}.")
+            } else {
+                val message = when (Manifest.permission.CAMERA) {
+                    Manifest.permission.ACCESS_FINE_LOCATION -> "Location accessing permission is required for android BLE function."
+                    Manifest.permission.CAMERA -> "Camera's permission is required for scanning the QR activation code."
+                    else -> "ERROR"
+                }
+
+                val listener: (DialogInterface, Int) -> Unit
+                val rightButtonTitle: String
+                if (ActivityCompat.shouldShowRequestPermissionRationale(requireActivity(), Manifest.permission.CAMERA)) {
+                    rightButtonTitle = "Retry"
+                    listener =  { _, _ ->
+                        checkCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                    }
+                } else {
+                    rightButtonTitle = "Set"
+                    listener = { _, _ ->
+                        requireActivity().startActivity(Intent().apply {
+                            action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                            data = Uri.parse("package:${requireActivity().packageName}")
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        })
+                    }
+                }
+                AlertDialog.Builder(requireContext())
+                        .setCancelable(false)
+                        .setMessage(message)
+                        .setNegativeButton("Cancel", null)
+                        .setPositiveButton(rightButtonTitle, listener)
+                        .show()
+            }
+            cameraOnPermitCallback?.invoke(isGranted)
+        }
+    }
+
+    private fun checkCameraPermission(callback: (Boolean) -> Unit) {
+        cameraOnPermitCallback = callback
+        checkCameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+    }
+
     override fun onStart() {
         super.onStart()
         EventBus.getDefault().register(this)
@@ -64,13 +118,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         val view = inflater.inflate(R.layout.lock_fragment, container, false)
 
         view.findViewById<ImageButton>(R.id.update_button).setOnClickListener { getLockInfo() }
-        view.findViewById<Button>(R.id.activate_by_qr_code_Button).setOnClickListener {
-            checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.CAMERA) { isGranted ->
-                if (isGranted) {
-                    activateByQRCode()
-                }
-            }
-        }
+        view.findViewById<Button>(R.id.activate_by_qr_code_Button).setOnClickListener { activateByQRCode() }
         view.findViewById<Button>(R.id.activate_by_nfc_Button).setOnClickListener { activateByNFC() }
         view.findViewById<Button>(R.id.deactivate_Button).setOnClickListener { deactivate() }
         view.findViewById<Button>(R.id.check_device_password_Button).setOnClickListener { checkDevicePassword() }
@@ -190,7 +238,7 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
         if (phonekeyBLELock.isActive()) {
             log("Lock has been activated", Log.ERROR)
         } else {
-            checkPermission(requireActivity() as AppCompatActivity, Manifest.permission.CAMERA) { isGranted ->
+            checkCameraPermission { isGranted ->
                 if (!isGranted) {
                     log("Camera's permission is not allowed.", Log.ERROR)
                 } else {
@@ -205,9 +253,9 @@ class LockFragment : Fragment(), PhonekeyBLELockObserver {
                                 communicationDialogFragment?.show("Activate By QR Code")
                                 phonekeyBLELock.activate(code, devicePassword, object : PhonekeyBLELock.ActivateListener {
                                     override fun onFailure(
-                                        status: PhonekeyBLELock.ActivationCodeStatus,
-                                        errorTimes: Int,
-                                        needToWait: Int
+                                            status: PhonekeyBLELock.ActivationCodeStatus,
+                                            errorTimes: Int,
+                                            needToWait: Int
                                     ) {
                                         when (status) {
                                             PhonekeyBLELock.ActivationCodeStatus.LENGTH_ERROR -> log("QR Code length ERROR!!!", Log.ERROR)
